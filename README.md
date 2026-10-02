@@ -1,4 +1,4 @@
-# 선형과 비선형 회귀분석
+# 선형과 비선형 회귀분석 프로그램
 
 ![적합 화면](shot-full.png)
 
@@ -48,7 +48,7 @@
 ## 파일 구성
 
 ```
-index.html                   웹 도구 전체 (이 파일 하나로 동작)
+index.html                   프로그램 전체 (이 파일 하나로 동작)
 linear_regression.py         선형회귀 파이썬 버전
 shot-*.png, cover.png        화면 이미지 (README와 노션 표지용)
 ```
