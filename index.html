@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>선형과 비선형 회귀분석</title>
+<meta name="description" content="최소제곱법과 경사하강법, 다항식·지수·로지스틱·신경망 회귀를 공개 데이터로 직접 돌려 보고 과적합을 판정하는 웹 도구입니다.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="선형과 비선형 회귀분석">
+<meta property="og:description" content="최소제곱법과 경사하강법, 다항식·지수·로지스틱·신경망 회귀를 공개 데이터로 비교합니다.">
+<meta name="theme-color" content="#F2F4F3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0D161C" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2314202A'/%3E%3Cg fill='%23F2F4F3'%3E%3Ccircle cx='9' cy='22' r='2.1'/%3E%3Ccircle cx='13' cy='17' r='2.1'/%3E%3Ccircle cx='18' cy='18' r='2.1'/%3E%3Ccircle cx='22' cy='11' r='2.1'/%3E%3C/g%3E%3Cpath d='M6 25L26 8' stroke='%23E2443B' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════ 토큰 ═══════════ */
+:root{
+  --paper:#F2F4F3; --sunk:#E8ECEB; --raise:#FFFFFF;
+  --ink:#14202A; --soft:#5A6B76; --faint:#8B9AA3;
+  --rule:#C6CFD1; --fine:#DDE3E3;
+  --fit:#D62828; --resid:#C2187E; --sea:#0E6A7D; --wash:#DCE9EC;
+  --warn:#A8410E; --warnbg:#F8EADF; --good:#2F6B3A;
+  --focus:#0E6A7D;
+  --ease:cubic-bezier(.4,0,.2,1);
+  --t1:.18s; --t2:.32s; --t3:.5s;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0D161C; --sunk:#131F27; --raise:#16242D;
+  --ink:#E4EBED; --soft:#93A5AE; --faint:#64757F;
+  --rule:#2C3D47; --fine:#1D2A32;
+  --fit:#FF5A4D; --resid:#F062B4; --sea:#4FBDD4; --wash:#17303A;
+  --warn:#E89055; --warnbg:#2A1C13; --good:#7FBF8A; --focus:#4FBDD4;
+}}
+:root[data-theme="dark"]{
+  --paper:#0D161C; --sunk:#131F27; --raise:#16242D;
+  --ink:#E4EBED; --soft:#93A5AE; --faint:#64757F;
+  --rule:#2C3D47; --fine:#1D2A32;
+  --fit:#FF5A4D; --resid:#F062B4; --sea:#4FBDD4; --wash:#17303A;
+  --warn:#E89055; --warnbg:#2A1C13; --good:#7FBF8A; --focus:#4FBDD4;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:"IBM Plex Sans KR","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+  font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.num{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ═══════════ 머리 + 모드 전환 ═══════════ */
+.top{position:sticky;top:0;z-index:20;background:var(--paper);
+  border-bottom:1px solid var(--ink);
+  padding:calc(12px + env(safe-area-inset-top,0px)) 18px 0}
+.topin{max-width:1180px;margin:0 auto;display:flex;align-items:center;
+  justify-content:space-between;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:10px;min-width:0}
+.brand h1{margin:0;font-size:1.12rem;font-weight:600;letter-spacing:-.015em;white-space:nowrap}
+.brand span{font-size:.78rem;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.modes{position:relative;display:flex;margin:0 0 -1px;flex-shrink:0}
+.modes button{appearance:none;background:none;border:0;font:inherit;font-size:.92rem;
+  color:var(--soft);padding:9px 20px 11px;min-height:44px;cursor:pointer;
+  position:relative;z-index:1;transition:color var(--t1) var(--ease);white-space:nowrap}
+.modes button[aria-pressed="true"]{color:var(--ink);font-weight:600}
+.modes button:focus-visible{outline:2px solid var(--focus);outline-offset:-3px;border-radius:2px}
+.mind{position:absolute;bottom:0;height:2px;background:var(--fit);
+  transition:transform var(--t2) var(--ease),width var(--t2) var(--ease);
+  left:0;width:0}
+
+/* ═══════════ 레이아웃 ═══════════ */
+.page{max-width:1180px;margin:0 auto;padding:0 18px}
+.grid{display:grid;grid-template-columns:1fr;grid-template-areas:"stage" "rail" "table";gap:0}
+.rail{grid-area:rail}.stage{grid-area:stage;min-width:0}.tablewrap{grid-area:table;min-width:0}
+@media (min-width:900px){
+  .grid{grid-template-columns:304px minmax(0,1fr);grid-template-areas:"rail stage" "rail table";
+    column-gap:32px;align-items:start}
+  .rail{position:sticky;top:76px;padding-top:20px;align-self:start}
+  .stage{padding-top:20px}
+  .tablewrap{padding-top:8px}
+  .embed .rail{top:12px}
+}
+@media (max-width:899px){
+  .rail{border-top:1px solid var(--ink);margin-top:24px;padding-top:18px}
+  .stage{padding-top:16px}
+}
+
+/* ═══════════ 카드 ═══════════ */
+.card{background:var(--raise);border:1px solid var(--fine);border-radius:5px;
+  padding:15px 16px;margin-bottom:14px}
+.card > h2{margin:0 0 3px;font-size:.84rem;font-weight:600;letter-spacing:-.005em;
+  display:flex;align-items:center;justify-content:space-between;gap:8px}
+.card .lead{margin:0 0 11px;font-size:.76rem;color:var(--soft);line-height:1.5}
+.tag{font-size:.68rem;font-weight:500;color:var(--sea);background:var(--wash);
+  padding:2px 7px;border-radius:9px;white-space:nowrap}
+
+/* ═══════════ 판독부 ═══════════ */
+.readout{margin-bottom:14px}
+.eqwrap{min-height:46px;display:flex;align-items:center}
+.eq{font-size:clamp(1.12rem,4.4vw,1.78rem);font-weight:500;letter-spacing:-.02em;
+  line-height:1.3;margin:0;word-break:break-word;
+  transition:opacity var(--t2) var(--ease)}
+.eq .coef{color:var(--fit)}
+.eq.idle{color:var(--faint);font-size:1rem;font-weight:400}
+.eq.swap{opacity:0}
+.subeq{margin:5px 0 0;color:var(--soft);font-size:.78rem;line-height:1.5}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);
+  gap:1px;background:var(--fine);border:1px solid var(--fine);border-radius:4px;
+  overflow:hidden;margin-top:13px}
+.st{background:var(--raise);padding:9px 11px 10px;min-width:0;transition:background var(--t2) var(--ease)}
+.st dt{margin:0;font-size:.7rem;color:var(--soft);letter-spacing:.01em}
+.st dd{margin:2px 0 0;font-size:1.02rem;font-weight:500}
+.st.flagged{background:var(--warnbg)}
+.st.flagged dd{color:var(--warn)}
+.st.good dd{color:var(--good)}
+.bar{height:3px;background:var(--fine);border-radius:2px;margin-top:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--sea);border-radius:2px;
+  transition:width var(--t3) var(--ease)}
+.alert{margin:12px 0 0;padding:10px 13px;background:var(--warnbg);
+  border-left:3px solid var(--warn);border-radius:0 4px 4px 0;
+  font-size:.81rem;line-height:1.55;
+  display:grid;grid-template-rows:1fr;transition:grid-template-rows var(--t2) var(--ease)}
+.alert[hidden]{display:none}
+
+/* ═══════════ 탭 ═══════════ */
+.tabs{display:flex;align-items:flex-end;border-bottom:1px solid var(--rule);
+  margin-top:18px;position:relative;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{appearance:none;background:none;border:0;font:inherit;font-size:.87rem;
+  color:var(--soft);padding:10px 14px;min-height:44px;cursor:pointer;white-space:nowrap;
+  transition:color var(--t1) var(--ease)}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--ink);font-weight:600}
+.tab:focus-visible{outline:2px solid var(--focus);outline-offset:-3px}
+.tind{position:absolute;bottom:0;height:2px;background:var(--fit);left:0;width:0;
+  transition:transform var(--t2) var(--ease),width var(--t2) var(--ease)}
+.tog{appearance:none;font:inherit;font-size:.78rem;cursor:pointer;color:var(--soft);
+  white-space:nowrap;background:var(--raise);border:1px solid var(--rule);
+  border-radius:3px;padding:0 10px;min-height:34px;
+  transition:background var(--t1) var(--ease),border-color var(--t1) var(--ease),color var(--t1) var(--ease)}
+.tog:hover{border-color:var(--ink);color:var(--ink)}
+.tog:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+.tog[aria-pressed="true"]{background:var(--wash);color:var(--ink);border-color:var(--sea);font-weight:500}
+.tog[aria-pressed="false"]{opacity:.62}
+.tog::before{content:"";display:inline-block;width:12px;height:2px;margin-right:6px;
+  vertical-align:middle;background:var(--resid)}
+.tog.ref::before{background:none;border-top:2px dashed var(--faint);height:0}
+.tog[aria-pressed="false"]::before{background:var(--faint);border-top-color:var(--faint)}
+
+/* ═══════════ 차트 ═══════════ */
+.plotbox{padding:12px 0 4px;min-height:210px}
+.plotbox svg{display:block;width:100%;height:auto}
+.chart{touch-action:manipulation}
+.chart .hit{cursor:pointer}
+.chart #marker,.chart .pt{pointer-events:none}
+.pickbar{display:flex;flex-wrap:wrap;margin:8px 0 0;border:1px solid var(--sea);
+  border-radius:4px;background:var(--wash);overflow:hidden;
+  animation:slidein var(--t2) var(--ease)}
+.pickbar[hidden]{display:none}
+.pk{padding:7px 12px;font-size:.82rem;border-right:1px solid var(--rule)}
+.pk:last-child{border-right:0}
+.pk b{font-weight:600}
+.pk.big{color:var(--warn);font-weight:500}
+.note{color:var(--soft);font-size:.79rem;margin:9px 0 0;line-height:1.55;
+  border-left:2px solid var(--rule);padding-left:10px}
+.cmpcap{margin:2px 0 10px;font-size:.78rem;color:var(--soft);line-height:1.5}
+.empty{color:var(--faint);font-size:.88rem;padding:44px 12px;text-align:center;
+  border:1px dashed var(--rule);border-radius:4px}
+
+
+@media (max-width:640px){
+  .stats{grid-template-columns:repeat(6,1fr)}
+  .st{grid-column:span 2}
+  .st:nth-child(1),.st:nth-child(2){grid-column:span 3}
+  .st:nth-child(1) dd,.st:nth-child(2) dd{font-size:1.14rem}
+}
+/* ═══════════ 그래프 도구줄 ═══════════ */
+.plotbar{display:flex;justify-content:flex-end;gap:6px;padding-top:10px;min-height:46px;
+  transition:opacity var(--t1) var(--ease)}
+.plotbar.off{opacity:0;pointer-events:none}
+.plotbar.gone{display:none}
+/* ═══════════ 꼬리말 ═══════════ */
+.foot{border-top:1px solid var(--ink);margin-top:36px;background:var(--sunk);
+  padding:26px 18px calc(30px + env(safe-area-inset-bottom,0px))}
+.footin{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:1fr;gap:20px;
+  font-size:.77rem;line-height:1.65;color:var(--soft)}
+@media (min-width:900px){.footin{grid-template-columns:200px minmax(0,1.35fr) minmax(0,1fr);gap:34px}}
+.footin p{margin:0 0 7px}
+.fid-t{color:var(--ink);font-weight:600;font-size:.82rem;margin-bottom:6px!important}
+.fid a,.fsrc a{color:var(--sea);text-decoration:none;border-bottom:1px solid color-mix(in srgb,var(--sea) 35%,transparent)}
+.fid a:hover{border-bottom-color:var(--sea)}
+.fformula code{font-size:.98em}
+.footin code{font-family:"IBM Plex Mono",monospace;font-size:.95em;background:var(--raise);
+  padding:1px 5px;border-radius:3px;border:1px solid var(--fine)}
+.fsrc ul{list-style:none;padding:0;margin:0}
+.fsrc li{margin:0 0 8px;padding-left:10px;border-left:2px solid var(--rule)}
+.fsrc li b{color:var(--ink);font-weight:500;display:block}
+/* ═══════════ 임베드(노션 안) ═══════════ */
+.embed .top{position:static}
+/* ═══════════ 애니메이션 ═══════════ */
+@keyframes slidein{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+@keyframes fadeup{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes draw{from{stroke-dashoffset:var(--len)}to{stroke-dashoffset:0}}
+@keyframes pop{from{opacity:0;transform:scale(.3)}to{opacity:var(--o,1);transform:scale(1)}}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.anim .fitline{stroke-dasharray:var(--len);animation:draw var(--t3) var(--ease) forwards}
+.anim .pt{animation:pop var(--t2) var(--ease) backwards;transform-origin:center;transform-box:fill-box}
+.anim .cbar{animation:grow var(--t3) var(--ease) backwards;transform-origin:left center;transform-box:fill-box}
+.fade{animation:fadeup var(--t2) var(--ease)}
+
+/* ═══════════ 폼 ═══════════ */
+select,textarea,input[type=number],input[type=text]{
+  background:var(--sunk);color:var(--ink);border:1px solid var(--rule);border-radius:4px;
+  font-family:inherit;transition:border-color var(--t1) var(--ease),box-shadow var(--t1) var(--ease)}
+select{width:100%;padding:9px 10px;font-size:.87rem;min-height:42px}
+select:focus,textarea:focus,input:focus{outline:none;border-color:var(--focus);
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--focus) 26%,transparent)}
+textarea{width:100%;min-height:118px;resize:vertical;padding:9px 11px;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.82rem;line-height:1.6}
+.drawer{display:grid;grid-template-rows:0fr;
+  transition:grid-template-rows var(--t2) var(--ease),opacity var(--t2) var(--ease);opacity:0}
+.drawer.open{grid-template-rows:1fr;opacity:1}
+.drawer > div{overflow:hidden;min-height:0}
+.row{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+.btn,label.btn{appearance:none;background:var(--raise);color:var(--ink);
+  border:1px solid var(--rule);border-radius:4px;font:inherit;font-size:.81rem;
+  padding:0 12px;min-height:38px;display:inline-flex;align-items:center;cursor:pointer;
+  transition:background var(--t1) var(--ease),border-color var(--t1) var(--ease),transform var(--t1) var(--ease)}
+.btn:hover,label.btn:hover{border-color:var(--ink);background:var(--sunk)}
+.btn:active{transform:translateY(1px)}
+.btn:focus-visible,label.btn:focus-within{outline:2px solid var(--focus);outline-offset:1px}
+input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
+.cols label{font-size:.73rem;color:var(--soft);display:block;margin-bottom:3px}
+.knob{display:grid;grid-template-columns:1fr auto;align-items:center;gap:7px;margin-top:11px}
+.knob span{font-size:.79rem;color:var(--soft)}
+.knob output{font-size:.79rem;font-weight:500}
+.knob input[type=range]{grid-column:1/-1;width:100%;accent-color:var(--sea);height:26px;margin:1px 0 0}
+.src{margin:9px 0 0;font-size:.72rem;color:var(--soft);line-height:1.5;
+  border-left:2px solid var(--sea);padding-left:9px}
+.src b{color:var(--ink);font-weight:500}
+.msg{margin:9px 0 0;font-size:.78rem;color:var(--warn);border-left:2px solid var(--warn);padding-left:9px}
+.msg.ok{color:var(--good);border-color:var(--good)}
+.msg[hidden]{display:none}
+.predict{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.predict input{width:112px;padding:8px 10px;font-family:"IBM Plex Mono",monospace;
+  font-size:.88rem;min-height:38px}
+.predict .arrow{color:var(--faint)}
+.predict .out{font-size:1rem;font-weight:500}
+.pwarn{color:var(--warn);font-size:.74rem;width:100%;margin:2px 0 0;line-height:1.5}
+.pwarn[hidden]{display:none}
+
+/* ═══════════ 표 ═══════════ */
+table.tbl{width:100%;border-collapse:collapse;font-size:.81rem}
+table.tbl th{text-align:right;font-weight:500;color:var(--soft);padding:6px 8px;
+  border-bottom:1px solid var(--rule);font-size:.74rem;position:sticky;top:0;background:var(--raise)}
+table.tbl th:first-child{text-align:left}
+table.tbl td{padding:5px 8px;border-bottom:1px solid var(--fine);text-align:right}
+table.tbl td:first-child{text-align:left;color:var(--soft)}
+table.tbl tbody tr{transition:background var(--t1) var(--ease)}
+table.tbl tbody tr:hover{background:var(--sunk)}
+table.tbl tr.sel{background:var(--wash)}
+.scroller{max-height:244px;overflow:auto;border:1px solid var(--fine);border-radius:4px}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;
+    transition-duration:.001ms!important}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="topin">
+    <div class="brand"><h1>회귀분석</h1><span id="modesub">직선 하나를 두 가지 방법으로 구합니다</span></div>
+    <nav class="modes" role="group" aria-label="분석 모드">
+      <button id="mode-lin" aria-pressed="true">선형</button>
+      <button id="mode-non" aria-pressed="false">비선형</button>
+      <i class="mind" id="mind" aria-hidden="true"></i>
+    </nav>
+  </div>
+</header>
+
+<div class="page">
+<div class="grid">
+
+  <aside class="rail">
+    <section class="card">
+      <h2>데이터 <span class="tag" id="ntag">—</span></h2>
+      <p class="lead">아래 목록에서 고르거나, 가지고 있는 데이터를 직접 넣어도 됩니다.</p>
+      <label class="sr" for="dataset">데이터 선택</label>
+      <select id="dataset"></select>
+      <p class="src" id="src"></p>
+      <div class="row">
+        <button class="btn" id="btn-own" type="button">직접 입력</button>
+        <label class="btn">CSV 열기<input type="file" id="file" accept=".csv,.txt,.tsv,text/csv,text/plain"></label>
+      </div>
+      <div class="drawer" id="drawer"><div>
+        <div class="cols" id="colpick" hidden>
+          <div><label for="colx">x 열</label><select id="colx"></select></div>
+          <div><label for="coly">y 열</label><select id="coly"></select></div>
+        </div>
+        <textarea id="data" spellcheck="false" placeholder="1, 4.2&#10;2, 5.9&#10;3, 9.1" aria-label="데이터 입력"></textarea>
+        <p class="lead" style="margin:7px 0 0">한 줄에 x와 y를 하나씩 적습니다. 쉼표, 공백, 탭을 모두 알아보고 머리글 줄은 건너뜁니다. 열이 여러 개인 공공데이터는 위에서 쓸 열을 고르면 됩니다.</p>
+      </div></div>
+      <p class="msg" id="msg" hidden></p>
+    </section>
+
+    <section class="card">
+      <h2>모형</h2>
+      <p class="lead" id="mlead"></p>
+      <label class="sr" for="model">모형 선택</label>
+      <select id="model"></select>
+      <p class="lead" id="mnote" style="margin:9px 0 0"></p>
+      <div id="knobs"></div>
+    </section>
+
+    <section class="card">
+      <h2>예측</h2>
+      <p class="lead">x를 넣으면 y가 얼마쯤 될지 알려줍니다.</p>
+      <div class="predict">
+        <label class="sr" for="px">예측할 x</label>
+        <input type="number" id="px" step="any" placeholder="x" inputmode="decimal">
+        <span class="arrow" aria-hidden="true">⟶</span>
+        <span class="out num" id="py">—</span>
+      </div>
+      <p class="pwarn" id="pwarn" hidden></p>
+    </section>
+  </aside>
+
+  <main class="stage">
+    <section class="readout" aria-live="polite">
+      <div class="eqwrap"><p class="eq idle" id="eq">데이터를 고르면 결과가 나옵니다</p></div>
+      <p class="subeq" id="subeq"></p>
+      <dl class="stats" id="stats"></dl>
+      <div class="alert" id="alert" hidden></div>
+    </section>
+
+    <div class="tabs" role="tablist" aria-label="그래프 종류" id="tabs">
+      <button class="tab" role="tab" id="tab-fit"   aria-selected="true"  aria-controls="plot">적합 곡선</button>
+      <button class="tab" role="tab" id="tab-resid" aria-selected="false" aria-controls="plot">잔차</button>
+      <button class="tab" role="tab" id="tab-loss"  aria-selected="false" aria-controls="plot">수렴 과정</button>
+      <button class="tab" role="tab" id="tab-cmp"   aria-selected="false" aria-controls="plot">모형 비교</button>
+      <i class="tind" id="tind" aria-hidden="true"></i>
+    </div>
+    <div class="plotbar" id="plotbar">
+      <button class="tog" id="tog-res" type="button" aria-pressed="true">잔차선</button>
+      <button class="tog ref" id="tog-ref" type="button" aria-pressed="false">1차 직선 겹쳐 보기</button>
+    </div>
+    <div class="plotbox" id="plot" role="tabpanel" aria-labelledby="tab-fit"></div>
+    <div class="pickbar" id="pick" hidden></div>
+    <p class="note" id="note"></p>
+  </main>
+
+  <section class="tablewrap">
+    <div class="card">
+      <h2>잔차표 <span class="tag">빗나간 순</span></h2>
+      <p class="lead">예측이 가장 많이 빗나간 점부터 보여줍니다. 한 줄을 누르면 그래프에서 그 점을 찾아 줍니다.</p>
+      <div class="scroller"><table class="tbl" id="restable"></table></div>
+    </div>
+  </section>
+
+</div>
+</div>
+
+<footer class="foot">
+  <div class="footin">
+    <div class="fid">
+      <p class="fid-t" id="fid-course"></p>
+      <p id="fid-term"></p>
+      <p id="fid-author" hidden></p>
+      <p id="fid-repo" hidden></p>
+    </div>
+    <div class="fnotes">
+      <p><b>R²만 보면 속습니다.</b> 파라미터를 늘리면 R²는 거의 항상 올라갑니다. 모형이 좋아진 게 아니라 데이터를 통째로 외운 것일 수 있습니다. 그래서 파라미터 수만큼 점수를 깎는 조정 R²를 함께 봐야 합니다.</p>
+      <p class="fformula"><code>조정 R² = 1 − (1 − R²)(n − 1)/(n − p)</code></p>
+      <p>선형 모드는 <code>y = ax + b</code>를 최소제곱법(정규방정식)과 경사하강법으로 각각 구합니다. 비선형 모드는 다항식을 정규방정식으로, 지수·거듭제곱·포화·로지스틱을 Levenberg-Marquardt 방법으로, 신경망을 역전파로 적합합니다.</p>
+      <p>계산은 전부 이 브라우저 안에서 끝납니다. 넣은 데이터가 밖으로 나가지 않습니다.</p>
+    </div>
+    <div class="fsrc">
+      <p class="fid-t">내장 데이터 출처</p>
+      <ul id="srclist"></ul>
+    </div>
+  </div>
+</footer>
+<script>
+/* ════════════════════════════════════════════════════════
+   제출 정보 — 여기만 채우면 페이지 맨 아래에 표시됩니다.
+   비워 두면 그 줄은 나타나지 않습니다.
+   ════════════════════════════════════════════════════════ */
+const SITE={
+  course:"데이터처리개론 과제",
+  term:"2026년 2학기",
+  author:"황준",
+  studentId:"2229432",
+  repo:""         // 비워 두면 GitHub Pages 주소에서 자동으로 채워집니다
+};
+
+const DATASETS=[{"id":"cars","label":"자동차 정지거리 (1920년대)","xl":"속도 (mph)","yl":"정지거리 (ft)","src":"Ezekiel, M. (1930) Methods of Correlation Analysis, Wiley (R datasets::cars)","note":"제동거리는 운동에너지에 비례하므로, 이론상 속도의 제곱에 가깝게 늘어납니다.","hint":"poly2","pts":[[4.0,2.0],[4.0,10.0],[7.0,4.0],[7.0,22.0],[8.0,16.0],[9.0,10.0],[10.0,18.0],[10.0,26.0],[10.0,34.0],[11.0,17.0],[11.0,28.0],[12.0,14.0],[12.0,20.0],[12.0,24.0],[12.0,28.0],[13.0,26.0],[13.0,34.0],[13.0,34.0],[13.0,46.0],[14.0,26.0],[14.0,36.0],[14.0,60.0],[14.0,80.0],[15.0,20.0],[15.0,26.0],[15.0,54.0],[16.0,32.0],[16.0,40.0],[17.0,32.0],[17.0,40.0],[17.0,50.0],[18.0,42.0],[18.0,56.0],[18.0,76.0],[18.0,84.0],[19.0,36.0],[19.0,46.0],[19.0,68.0],[20.0,32.0],[20.0,48.0],[20.0,52.0],[20.0,56.0],[20.0,64.0],[22.0,66.0],[23.0,54.0],[24.0,70.0],[24.0,92.0],[24.0,93.0],[24.0,120.0],[25.0,85.0]]},{"id":"pressure","label":"수은 증기압","xl":"온도 (℃)","yl":"증기압 (mmHg)","src":"McNeil, D. R. (1977) Interactive Data Analysis, Wiley (R datasets::pressure)","note":"온도가 오르면 증기압이 백만 배 가까이 뛰는 전형적인 지수 증가입니다. x가 0인 점이 있어 로그 모형에는 쓸 수 없습니다.","hint":"exp","pts":[[0.0,0.0002],[20.0,0.0012],[40.0,0.006],[60.0,0.03],[80.0,0.09],[100.0,0.27],[120.0,0.75],[140.0,1.85],[160.0,4.2],[180.0,8.8],[200.0,17.3],[220.0,32.1],[240.0,57.0],[260.0,96.0],[280.0,157.0],[300.0,247.0],[320.0,376.0],[340.0,558.0],[360.0,806.0]]},{"id":"uspop","label":"미국 인구 (1790~1970)","xl":"연도","yl":"인구 (백만 명)","src":"미국 인구조사 (R datasets::uspop)","note":"처음에는 지수처럼 불어나다가 갈수록 완만해지는 S자 곡선입니다.","hint":"logistic","pts":[[1790.0,3.93],[1800.0,5.31],[1810.0,7.24],[1820.0,9.64],[1830.0,12.9],[1840.0,17.1],[1850.0,23.2],[1860.0,31.4],[1870.0,39.8],[1880.0,50.2],[1890.0,62.9],[1900.0,76.0],[1910.0,92.0],[1920.0,105.7],[1930.0,122.8],[1940.0,131.7],[1950.0,151.3],[1960.0,179.3],[1970.0,203.2]]},{"id":"puromycin","label":"효소 반응속도 (처리군)","xl":"기질 농도 (ppm)","yl":"반응속도 (counts/min²)","src":"Treloar, M. A. (1974), R datasets::Puromycin","note":"기질을 아무리 넣어도 반응 속도가 더 오르지 않는 미카엘리스-멘텐 포화 곡선입니다.","hint":"mm","pts":[[0.02,76.0],[0.02,47.0],[0.06,97.0],[0.06,107.0],[0.11,123.0],[0.11,139.0],[0.22,159.0],[0.22,152.0],[0.56,191.0],[0.56,201.0],[1.1,207.0],[1.1,200.0]]},{"id":"loblolly","label":"테다소나무 성장","xl":"수령 (년)","yl":"수고 (ft)","src":"R datasets::Loblolly","note":"생물의 성장 곡선입니다. 어릴 때 빠르게 자라다가 점점 더디어집니다.","hint":"poly2","pts":[[3.0,4.51],[5.0,10.89],[10.0,28.72],[15.0,41.74],[20.0,52.7],[25.0,60.92],[3.0,4.55],[5.0,10.92],[10.0,29.07],[15.0,42.83],[20.0,53.88],[25.0,63.39],[3.0,4.79],[5.0,11.37],[10.0,30.21],[15.0,44.4],[20.0,55.82],[25.0,64.1],[3.0,3.91],[5.0,9.48],[10.0,25.66],[15.0,39.07],[20.0,50.78],[25.0,59.07],[3.0,4.81],[5.0,11.2],[10.0,28.66],[15.0,41.66],[20.0,53.31],[25.0,63.05],[3.0,3.88],[5.0,9.4],[10.0,25.99],[15.0,39.55],[20.0,51.46],[25.0,59.64],[3.0,4.32],[5.0,10.43],[10.0,27.16],[15.0,40.85],[20.0,51.33],[25.0,60.07],[3.0,4.57],[5.0,10.57],[10.0,27.9],[15.0,41.13],[20.0,52.43],[25.0,60.69],[3.0,3.77],[5.0,9.03],[10.0,25.45],[15.0,38.98],[20.0,49.76],[25.0,60.28],[3.0,4.33],[5.0,10.79],[10.0,28.97],[15.0,42.44],[20.0,53.17],[25.0,61.62],[3.0,4.38],[5.0,10.48],[10.0,27.93],[15.0,40.2],[20.0,50.06],[25.0,58.49],[3.0,4.12],[5.0,9.92],[10.0,26.54],[15.0,37.82],[20.0,48.43],[25.0,56.81],[3.0,3.93],[5.0,9.34],[10.0,26.08],[15.0,37.79],[20.0,48.31],[25.0,56.43],[3.0,3.46],[5.0,9.05],[10.0,25.85],[15.0,39.15],[20.0,49.12],[25.0,59.49]]},{"id":"mpg","label":"차량 중량 대 연비","xl":"공차중량 (lb)","yl":"연비 (mpg)","src":"UCI Auto MPG (seaborn-data/mpg.csv)","note":"차가 무거울수록 연비가 떨어지는데, 떨어지는 폭은 갈수록 줄어듭니다.","hint":"pow","pts":[[3504.0,18.0],[3693.0,15.0],[3436.0,18.0],[3433.0,16.0],[3449.0,17.0],[4341.0,15.0],[4354.0,14.0],[4312.0,14.0],[4425.0,14.0],[3850.0,15.0],[3563.0,15.0],[3609.0,14.0],[3761.0,15.0],[3086.0,14.0],[2372.0,24.0],[2833.0,22.0],[2774.0,18.0],[2587.0,21.0],[2130.0,27.0],[1835.0,26.0],[2672.0,25.0],[2430.0,24.0],[2375.0,25.0],[2234.0,26.0],[2648.0,21.0],[4615.0,10.0],[4376.0,10.0],[4382.0,11.0],[4732.0,9.0],[2130.0,27.0],[2264.0,28.0],[2228.0,25.0],[2046.0,25.0],[2634.0,19.0],[3439.0,16.0],[3329.0,17.0],[3302.0,19.0],[3288.0,18.0],[4209.0,14.0],[4464.0,14.0],[4154.0,14.0],[4096.0,14.0],[4955.0,12.0],[4746.0,13.0],[5140.0,13.0],[2962.0,18.0],[2408.0,22.0],[3282.0,19.0],[3139.0,18.0],[2220.0,23.0],[2123.0,28.0],[2074.0,30.0],[2065.0,30.0],[1773.0,31.0],[1613.0,35.0],[1834.0,27.0],[1955.0,26.0],[2278.0,24.0],[2126.0,25.0],[2254.0,23.0],[2408.0,20.0],[2226.0,21.0],[4274.0,13.0],[4385.0,14.0],[4135.0,15.0],[4129.0,14.0],[3672.0,17.0],[4633.0,11.0],[4502.0,13.0],[4456.0,12.0],[4422.0,13.0],[2330.0,19.0],[3892.0,15.0],[4098.0,13.0],[4294.0,13.0],[4077.0,14.0],[2933.0,18.0],[2511.0,22.0],[2979.0,21.0],[2189.0,26.0],[2395.0,22.0],[2288.0,28.0],[2506.0,23.0],[2164.0,28.0],[2100.0,27.0],[4100.0,13.0],[3672.0,14.0],[3988.0,13.0],[4042.0,14.0],[3777.0,15.0],[4952.0,12.0],[4464.0,13.0],[4363.0,13.0],[4237.0,14.0],[4735.0,13.0],[4951.0,12.0],[3821.0,13.0],[3121.0,18.0],[3278.0,16.0],[2945.0,18.0],[3021.0,18.0],[2904.0,23.0],[1950.0,26.0],[4997.0,11.0],[4906.0,12.0],[4654.0,13.0],[4499.0,12.0],[2789.0,18.0],[2279.0,20.0],[2401.0,21.0],[2379.0,22.0],[2124.0,18.0],[2310.0,19.0],[2472.0,21.0],[2265.0,26.0],[4082.0,15.0],[4278.0,16.0],[1867.0,29.0],[2158.0,24.0],[2582.0,20.0],[2868.0,19.0],[3399.0,15.0],[2660.0,24.0],[2807.0,20.0],[3664.0,11.0],[3102.0,20.0],[2875.0,21.0],[2901.0,19.0],[3336.0,15.0],[1950.0,31.0],[2451.0,26.0],[1836.0,32.0],[2542.0,25.0],[3781.0,16.0],[3632.0,16.0],[3613.0,18.0],[4141.0,16.0],[4699.0,13.0],[4457.0,14.0],[4638.0,14.0],[4257.0,14.0],[2219.0,29.0],[1963.0,26.0],[2300.0,26.0],[1649.0,31.0],[2003.0,32.0],[2125.0,28.0],[2108.0,24.0],[2246.0,26.0],[2489.0,24.0],[2391.0,26.0],[2000.0,31.0],[3264.0,19.0],[3459.0,18.0],[3432.0,15.0],[3158.0,15.0],[4668.0,16.0],[4440.0,15.0],[4498.0,16.0],[4657.0,14.0],[3907.0,17.0],[3897.0,16.0],[3730.0,15.0],[3785.0,18.0],[3039.0,21.0],[3221.0,20.0],[3169.0,13.0],[2171.0,29.0],[2639.0,23.0],[2914.0,20.0],[2592.0,23.0],[2702.0,24.0],[2223.0,25.0],[2545.0,24.0],[2984.0,18.0],[1937.0,29.0],[3211.0,19.0],[2694.0,23.0],[2957.0,23.0],[2945.0,22.0],[2671.0,25.0],[1795.0,33.0],[2464.0,28.0],[2220.0,25.0],[2572.0,25.0],[2255.0,26.0],[2202.0,27.0],[4215.0,17.5],[4190.0,16.0],[3962.0,15.5],[4215.0,14.5],[3233.0,22.0],[3353.0,22.0],[3012.0,24.0],[3085.0,22.5],[2035.0,29.0],[2164.0,24.5],[1937.0,29.0],[1795.0,33.0],[3651.0,20.0],[3574.0,18.0],[3645.0,18.5],[3193.0,17.5],[1825.0,29.5],[1990.0,32.0],[2155.0,28.0],[2565.0,26.5],[3150.0,20.0],[3940.0,13.0],[3270.0,19.0],[2930.0,19.0],[3820.0,16.5],[4380.0,16.5],[4055.0,13.0],[3870.0,13.0],[3755.0,13.0],[2045.0,31.5],[2155.0,30.0],[1825.0,36.0],[2300.0,25.5],[1945.0,33.5],[3880.0,17.5],[4060.0,17.0],[4140.0,15.5],[4295.0,15.0],[3520.0,17.5],[3425.0,20.5],[3630.0,19.0],[3525.0,18.5],[4220.0,16.0],[4165.0,15.5],[4325.0,15.5],[4335.0,16.0],[1940.0,29.0],[2740.0,24.5],[2265.0,26.0],[2755.0,25.5],[2051.0,30.5],[2075.0,33.5],[1985.0,30.0],[2190.0,30.5],[2815.0,22.0],[2600.0,21.5],[2720.0,21.5],[1985.0,43.1],[1800.0,36.1],[1985.0,32.8],[2070.0,39.4],[1800.0,36.1],[3365.0,19.9],[3735.0,19.4],[3570.0,20.2],[3535.0,19.2],[3155.0,20.5],[2965.0,20.2],[2720.0,25.1],[3430.0,20.5],[3210.0,19.4],[3380.0,20.6],[3070.0,20.8],[3620.0,18.6],[3410.0,18.1],[3425.0,19.2],[3445.0,17.7],[3205.0,18.1],[4080.0,17.5],[2155.0,30.0],[2560.0,27.5],[2300.0,27.2],[2230.0,30.9],[2515.0,21.1],[2745.0,23.2],[2855.0,23.8],[2405.0,23.9],[2830.0,20.3],[3140.0,17.0],[2795.0,21.6],[3410.0,16.2],[1990.0,31.5],[2135.0,29.5],[3245.0,21.5],[2990.0,19.8],[2890.0,22.3],[3265.0,20.2],[3360.0,20.6],[3840.0,17.0],[3725.0,17.6],[3955.0,16.5],[3830.0,18.2],[4360.0,16.9],[4054.0,15.5],[3605.0,19.2],[3940.0,18.5],[1925.0,31.9],[1975.0,34.1],[1915.0,35.7],[2670.0,27.4],[3530.0,25.4],[3900.0,23.0],[3190.0,27.2],[3420.0,23.9],[2200.0,34.2],[2150.0,34.5],[2020.0,31.8],[2130.0,37.3],[2670.0,28.4],[2595.0,28.8],[2700.0,26.8],[2556.0,33.5],[2144.0,41.5],[1968.0,38.1],[2120.0,32.1],[2019.0,37.2],[2678.0,28.0],[2870.0,26.4],[3003.0,24.3],[3381.0,19.1],[2188.0,34.3],[2711.0,29.8],[2542.0,31.3],[2434.0,37.0],[2265.0,32.2],[2110.0,46.6],[2800.0,27.9],[2110.0,40.8],[2085.0,44.3],[2335.0,43.4],[2950.0,36.4],[3250.0,30.0],[1850.0,44.6],[1835.0,40.9],[2145.0,33.8],[1845.0,29.8],[2910.0,32.7],[2420.0,23.7],[2500.0,35.0],[2905.0,23.6],[2290.0,32.4],[2490.0,27.2],[2635.0,26.6],[2620.0,25.8],[2725.0,23.5],[2385.0,30.0],[1755.0,39.1],[1875.0,39.0],[1760.0,35.1],[2065.0,32.3],[1975.0,37.0],[2050.0,37.7],[1985.0,34.1],[2215.0,34.7],[2045.0,34.4],[2380.0,29.9],[2190.0,33.0],[2320.0,34.5],[2210.0,33.7],[2350.0,32.4],[2615.0,32.9],[2635.0,31.6],[3230.0,28.1],[3160.0,30.7],[2900.0,25.4],[2930.0,24.2],[3415.0,22.4],[3725.0,26.6],[3060.0,20.2],[3465.0,17.6],[2605.0,28.0],[2640.0,27.0],[2395.0,34.0],[2575.0,31.0],[2525.0,29.0],[2735.0,27.0],[2865.0,24.0],[3035.0,23.0],[1980.0,36.0],[2025.0,37.0],[1970.0,31.0],[2125.0,38.0],[2125.0,36.0],[2160.0,36.0],[2205.0,36.0],[2245.0,34.0],[1965.0,38.0],[1965.0,32.0],[1995.0,38.0],[2945.0,25.0],[3015.0,38.0],[2585.0,26.0],[2835.0,22.0],[2665.0,32.0],[2370.0,36.0],[2950.0,27.0],[2790.0,27.0],[2130.0,44.0],[2295.0,32.0],[2625.0,28.0],[2720.0,31.0]]}];/* ===================== 유틸 ===================== */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+function fmt(v,sig){sig=sig||5;
+  if(v===null||v===undefined||!isFinite(v))return "—";
+  const a=Math.abs(v);
+  if(a!==0&&(a<1e-4||a>=1e6))return v.toExponential(3);
+  const id=a<1?1:Math.floor(Math.log10(a))+1;
+  return v.toFixed(Math.max(0,Math.min(8,sig-id)));}
+function fmtTick(v,step){if(v===0)return "0";
+  const a=Math.abs(v);
+  if(a<1e-3||a>=1e6)return v.toExponential(1).replace("e+","e");
+  return v.toFixed(step<1?Math.min(6,Math.ceil(-Math.log10(step))):0);}
+function mean(a){let s=0;for(const v of a)s+=v;return s/a.length;}
+function sd(a){const m=mean(a);let s=0;for(const v of a)s+=(v-m)*(v-m);return Math.sqrt(s/a.length);}
+
+/* ===================== 선형대수 ===================== */
+function solveLin(A,b){const n=b.length;
+  const M=A.map((r,i)=>r.concat([b[i]]));
+  for(let c=0;c<n;c++){let p=c;
+    for(let r=c+1;r<n;r++)if(Math.abs(M[r][c])>Math.abs(M[p][c]))p=r;
+    if(Math.abs(M[p][c])<1e-14)return null;
+    const t=M[c];M[c]=M[p];M[p]=t;
+    for(let r=0;r<n;r++){if(r===c)continue;
+      const f=M[r][c]/M[c][c];
+      for(let k=c;k<=n;k++)M[r][k]-=f*M[c][k];}}
+  const out=[];for(let i=0;i<n;i++)out.push(M[i][n]/M[i][i]);
+  return out.every(isFinite)?out:null;}
+
+/* ===================== 입력 해석 ===================== */
+function parseData(text){const rows=[],bad=[];
+  const lines=text.split(/\r?\n/);
+  for(let i=0;i<lines.length;i++){
+    const raw=lines[i].trim(); if(!raw)continue;
+    const p=raw.split(/[,;\t]+|\s+/).filter(s=>s.length);
+    if(p.length<2){bad.push(i+1);continue;}
+    const x=Number(p[0]),y=Number(p[1]);
+    if(!isFinite(x)||!isFinite(y)){
+      if(rows.length===0&&bad.length===0)continue;
+      bad.push(i+1);continue;}
+    rows.push([x,y]);}
+  return {rows:rows,bad:bad};}
+
+/* ===================== 다항식 ===================== */
+function fitPoly(x,y,deg){const n=x.length;
+  if(n<deg+1)return {error:`${deg}차 다항식은 최소 ${deg+1}개 점이 필요합니다 (현재 ${n}개)`};
+  const xm=Math.min.apply(null,x),xM=Math.max.apply(null,x);
+  const c=(xm+xM)/2,s=(xM-xm)/2||1;
+  const u=x.map(v=>(v-c)/s),m=deg+1,A=[],bb=[];
+  for(let i=0;i<m;i++){A.push(new Array(m).fill(0));bb.push(0);
+    for(let j=0;j<m;j++)for(let k=0;k<n;k++)A[i][j]+=Math.pow(u[k],i+j);
+    for(let k=0;k<n;k++)bb[i]+=y[k]*Math.pow(u[k],i);}
+  const au=solveLin(A,bb);
+  if(!au)return {error:"정규방정식을 풀 수 없습니다. 차수를 낮추거나 데이터를 다시 확인해 보세요"};
+  return {predict:v=>{const t=(v-c)/s;let r=0;for(let i=au.length-1;i>=0;i--)r=r*t+au[i];return r;},
+    nparam:m,coef:au,center:c,scale:s,converged:true,
+    eq:polyEq(au,c,s,deg),
+    sub: deg>3
+      ? `u = (x \u2212 ${rawNum(c)}) / ${rawNum(s)} 입니다. x 구간 [${rawNum(xm)}, ${rawNum(xM)}]이 [\u22121, 1]에 오도록 옮긴 값으로, 4차 이상에서 계수가 폭주하는 것을 막는 표준 처리입니다.`
+      : `x를 [${rawNum(xm)}, ${rawNum(xM)}] 구간이 [\u22121, 1]이 되도록 옮겨 계산했습니다 (수치 안정을 위한 표준 처리).`};}
+function sup(n){const M={0:"\u2070",1:"\u00B9",2:"\u00B2",3:"\u00B3",4:"\u2074",5:"\u2075",6:"\u2076",7:"\u2077",8:"\u2078",9:"\u2079"};
+  return String(n).split("").map(d=>M[d]||d).join("");}
+function polyEq(au,c,s,deg){
+  if(deg>3){
+    // 4차 이상은 원래 x로 펼치면 계수가 극단적으로 커지거나 작아져 읽을 수 없다.
+    // 수치적으로 안정한 표준화 변수 u 기준으로 표시한다.
+    let t="y = ";
+    for(let k=deg;k>=0;k--){const v=au[k];
+      if(k<deg)t+= v>=0?" + ":" \u2212 ";
+      t+=`<span class="coef">${esc(fmt(k<deg?Math.abs(v):v,4))}</span>`;
+      if(k===1)t+="u"; else if(k>1)t+="u"+sup(k);}
+    return t;
+  }
+  const out=[];for(let j=0;j<=deg;j++){let cf=0;
+    for(let k=j;k<=deg;k++){
+      let b=1;for(let t=0;t<j;t++)b=b*(k-t)/(t+1);
+      cf+=au[k]*b*Math.pow(-c,k-j)/Math.pow(s,k);}
+    out.push(cf);}
+  let str="y = ";
+  for(let j=deg;j>=0;j--){const v=out[j];
+    if(j<deg)str+= v>=0?" + ":" − ";
+    const a=j<deg?Math.abs(v):v;
+    str+=`<span class="coef">${esc(fmt(a,5))}</span>`;
+    if(j===1)str+="x"; else if(j>1)str+=`x<sup>${j}</sup>`;}
+  return str;}
+
+/* ===================== Levenberg-Marquardt ===================== */
+function lm(x,y,f,p0,maxIter){maxIter=maxIter||500;
+  const n=x.length,m=p0.length;let p=p0.slice(),lam=1e-3;
+  const sse=q=>{let s=0;for(let i=0;i<n;i++){const d=y[i]-f(x[i],q);
+      if(!isFinite(d))return Infinity;s+=d*d;}return s;};
+  let cost=sse(p);if(!isFinite(cost))return null;
+  const hist=[cost/n];let done=false,iters=maxIter;
+  for(let it=0;it<maxIter;it++){
+    const J=[],r=[];
+    for(let i=0;i<n;i++){J.push(new Array(m));r.push(y[i]-f(x[i],p));}
+    for(let j=0;j<m;j++){const h=Math.max(1e-9,Math.abs(p[j])*1e-6);
+      const pp=p.slice();pp[j]+=h;const pmm=p.slice();pmm[j]-=h;
+      for(let i=0;i<n;i++){const d=(f(x[i],pp)-f(x[i],pmm))/(2*h);J[i][j]=isFinite(d)?d:0;}}
+    const JtJ=[],Jtr=new Array(m).fill(0);
+    for(let a=0;a<m;a++){JtJ.push(new Array(m).fill(0));
+      for(let b=0;b<m;b++)for(let i=0;i<n;i++)JtJ[a][b]+=J[i][a]*J[i][b];
+      for(let i=0;i<n;i++)Jtr[a]+=J[i][a]*r[i];}
+    let ok=false;
+    for(let t=0;t<14;t++){
+      const Ad=JtJ.map((row,a)=>row.map((v,b)=>a===b?v+lam*(Math.abs(v)>1e-12?v:1):v));
+      const d=solveLin(Ad,Jtr);
+      if(d){const pn=p.map((v,i)=>v+d[i]),cn=sse(pn);
+        if(isFinite(cn)&&cn<cost){const imp=cost-cn;p=pn;cost=cn;
+          lam=Math.max(lam*0.4,1e-12);ok=true;hist.push(cost/n);
+          if(imp/Math.max(cost,1e-30)<1e-12){done=true;iters=it+1;}
+          break;}}
+      lam*=6;if(lam>1e13)break;}
+    if(done){break;}
+    if(!ok){done=true;iters=it+1;break;}}
+  return {p:p,hist:hist,iters:iters,converged:done};}
+
+/* ===================== 신경망 ===================== */
+function fitNN(x,y,H,lr,epochs){
+  const n=x.length,mx=mean(x),my=mean(y),sx=sd(x)||1,sy=sd(y)||1;
+  const X=x.map(v=>(v-mx)/sx),Y=y.map(v=>(v-my)/sy);
+  let st=20260918;
+  const rnd=()=>{st=(st*1103515245+12345)&0x7fffffff;return st/0x7fffffff*2-1;};
+  const W1=[],b1=[],W2=[];let b2=0;
+  for(let h=0;h<H;h++){W1.push(rnd()*1.2);b1.push(rnd()*0.6);W2.push(rnd()*0.8);}
+  const mW1=new Array(H).fill(0),mb1=new Array(H).fill(0),mW2=new Array(H).fill(0);
+  let mb2=0;const mom=0.9,hist=[];let conv=false;
+  for(let e=0;e<epochs;e++){
+    const gW1=new Array(H).fill(0),gb1=new Array(H).fill(0),gW2=new Array(H).fill(0);
+    let gb2=0,loss=0;
+    for(let i=0;i<n;i++){const a=new Array(H);let o=b2;
+      for(let h=0;h<H;h++){a[h]=Math.tanh(W1[h]*X[i]+b1[h]);o+=W2[h]*a[h];}
+      const err=o-Y[i];loss+=err*err;gb2+=2*err/n;
+      for(let h=0;h<H;h++){gW2[h]+=2*err*a[h]/n;
+        const d=2*err*W2[h]*(1-a[h]*a[h])/n;gW1[h]+=d*X[i];gb1[h]+=d;}}
+    hist.push(loss/n);
+    if(!isFinite(loss))break;
+    for(let h=0;h<H;h++){
+      mW1[h]=mom*mW1[h]-lr*gW1[h];W1[h]+=mW1[h];
+      mb1[h]=mom*mb1[h]-lr*gb1[h];b1[h]+=mb1[h];
+      mW2[h]=mom*mW2[h]-lr*gW2[h];W2[h]+=mW2[h];}
+    mb2=mom*mb2-lr*gb2;b2+=mb2;
+    if(e>40&&Math.abs(hist[e-1]-hist[e])<1e-13){conv=true;break;}}
+  return {predict:v=>{const t=(v-mx)/sx;let o=b2;
+      for(let h=0;h<H;h++)o+=W2[h]*Math.tanh(W1[h]*t+b1[h]);return o*sy+my;},
+    nparam:3*H+1,hist:hist,converged:conv,
+    eq:`은닉 뉴런 ${H}개, 학습 파라미터 ${3*H+1}개`,
+    sub:"입력과 출력을 표준화해 학습한 뒤 원래 단위로 되돌립니다. 사람이 읽을 수 있는 식으로는 적을 수 없습니다."};}
+
+/* ===================== 모형 정의 ===================== */
+function ols(x,y){const n=x.length,mx=mean(x),my=mean(y);
+  let nu=0,de=0;for(let i=0;i<n;i++){nu+=(x[i]-mx)*(y[i]-my);de+=(x[i]-mx)*(x[i]-mx);}
+  const a=de===0?0:nu/de;return [a,my-a*mx];}
+
+const MODELS={
+  poly:{label:"다항식",note:"차수를 올릴수록 곡선이 자유로워집니다. 다만 점과 점 사이에서 출렁이기 시작하면 과적합입니다.",
+    knobs:[{id:"deg",label:"차수",min:1,max:8,step:1,val:2,fmt:v=>v+"차"}]},
+  exp:{label:"지수  y = a·e^(bx)",np:2,f:(v,p)=>p[0]*Math.exp(p[1]*v),
+    note:"일정한 비율로 늘거나 줄어드는 현상입니다. 증기압, 방사성 붕괴, 초기 인구 증가가 여기 해당합니다.",
+    domain:()=>true,
+    init:(x,y)=>{const ix=[],ly=[];
+      for(let i=0;i<x.length;i++)if(y[i]>0){ix.push(x[i]);ly.push(Math.log(y[i]));}
+      if(ix.length<2)return [Math.max(...y)||1,0.01];
+      const r=ols(ix,ly);return [Math.exp(r[1]),r[0]];},
+    eq:p=>`y = <span class="coef">${esc(fmt(p[0]))}</span> · e<sup><span class="coef">${esc(fmt(p[1]))}</span>x</sup>`},
+  pow:{label:"거듭제곱  y = a·x^b",np:2,f:(v,p)=>v<=0?(p[1]>0?0:NaN):p[0]*Math.pow(v,p[1]),
+    note:"한쪽이 몇 배가 되면 다른 쪽도 정해진 거듭제곱만큼 변합니다. 저항이 속도의 제곱에 비례하듯, 물리 법칙에서 자주 나오는 꼴입니다.",
+    domain:(vx,vy)=>vx>0,
+    init:(x,y)=>{const lx=[],ly=[];
+      for(let i=0;i<x.length;i++)if(x[i]>0&&y[i]>0){lx.push(Math.log(x[i]));ly.push(Math.log(y[i]));}
+      if(lx.length<2)return [1,1];
+      const r=ols(lx,ly);return [Math.exp(r[1]),r[0]];},
+    eq:p=>`y = <span class="coef">${esc(fmt(p[0]))}</span> · x<sup><span class="coef">${esc(fmt(p[1]))}</span></sup>`},
+  log:{label:"로그  y = a·ln(x) + b",np:2,f:(v,p)=>p[0]*Math.log(v)+p[1],
+    note:"처음에는 빠르게 변하다가 갈수록 둔해지는 관계입니다.",
+    domain:(vx)=>vx>0,
+    init:(x,y)=>{const lx=[],yy=[];
+      for(let i=0;i<x.length;i++)if(x[i]>0){lx.push(Math.log(x[i]));yy.push(y[i]);}
+      if(lx.length<2)return [1,0];return ols(lx,yy);},
+    eq:p=>`y = <span class="coef">${esc(fmt(p[0]))}</span> · ln(x) ${p[1]>=0?"+":"−"} <span class="coef">${esc(fmt(Math.abs(p[1])))}</span>`},
+  mm:{label:"포화  y = a·x/(b + x)",np:2,f:(v,p)=>p[0]*v/(p[1]+v),
+    note:"아무리 늘려도 한계값 a에서 더 올라가지 않습니다. 효소 반응이나 흡착에서 나옵니다.",
+    domain:()=>true,
+    init:(x,y)=>[Math.max.apply(null,y)*1.1,Math.max(mean(x),1e-9)],
+    eq:p=>`y = <span class="coef">${esc(fmt(p[0]))}</span>·x / (<span class="coef">${esc(fmt(p[1]))}</span> + x)`},
+  logistic:{label:"로지스틱  S자 성장",np:3,
+    f:(v,p)=>p[0]/(1+Math.exp(-p[1]*(v-p[2]))),
+    note:"느리게 시작해 가파르게 늘다가 상한 L에서 멈추는 S자 곡선입니다. 인구, 보급률, 생물 성장이 이렇게 움직입니다.",
+    domain:()=>true,
+    init:(x,y)=>{const xs=x.slice().sort((a,b)=>a-b);
+      const rng=(Math.max.apply(null,x)-Math.min.apply(null,x))||1;
+      return [Math.max.apply(null,y)*1.05,4/rng,xs[Math.floor(xs.length/2)]];},
+    eq:p=>`y = <span class="coef">${esc(fmt(p[0]))}</span> / (1 + e<sup>−<span class="coef">${esc(fmt(p[1]))}</span>(x − <span class="coef">${esc(fmt(p[2]))}</span>)</sup>)`},
+  nn:{label:"인공신경망  (은닉층 1개)",
+    note:"어떤 곡선이든 흉내 낼 수 있지만 식으로 적을 수 없고, 파라미터가 많아 과적합되기 쉽습니다.",
+    knobs:[{id:"H",label:"은닉 뉴런",min:2,max:14,step:1,val:6,fmt:v=>v+"개"},
+           {id:"lr",label:"학습률",min:1,max:40,step:1,val:12,fmt:v=>(v/200).toFixed(3),conv:v=>v/200},
+           {id:"ep",label:"반복",min:200,max:6000,step:200,val:2500,fmt:v=>v}]}
+};
+
+/* ===================== 진단 ===================== */
+function diag(x,y,pred,np){const n=x.length,my=mean(y);
+  let sr=0,st=0;const res=[];
+  for(let i=0;i<n;i++){const r=y[i]-pred(x[i]);res.push(r);
+    sr+=r*r;st+=(y[i]-my)*(y[i]-my);}
+  const r2=st<1e-15?NaN:1-sr/st;
+  const adj=(n-np)>0?1-(1-r2)*(n-1)/(n-np):NaN;
+  return {res:res,r2:r2,adj:adj,rmse:Math.sqrt(sr/n),n:n,np:np};}
+
+/* ===================== 적합 진입점 ===================== */
+function runFit(x,y,key,K){
+  const M=MODELS[key];
+  if(key==="poly")return fitPoly(x,y,K.deg);
+  if(key==="nn"){
+    if(x.length<3)return {error:"신경망 학습에는 점이 3개 이상 필요합니다"};
+    const r=fitNN(x,y,K.H,K.lr/200,K.ep);
+    return {predict:r.predict,nparam:r.nparam,hist:r.hist,converged:r.converged,
+      eq:r.eq,sub:r.sub,iters:r.hist.length};}
+  // 도메인 필터
+  const fx=[],fy=[];let dropped=0;
+  for(let i=0;i<x.length;i++){
+    if(M.domain(x[i],y[i])){fx.push(x[i]);fy.push(y[i]);}else dropped++;}
+  if(fx.length<M.np)
+    return {error:`이 모형에 쓸 수 있는 점이 ${fx.length}개뿐입니다 (최소 ${M.np}개 필요)`};
+  const r=lm(fx,fy,M.f,M.init(fx,fy),500);
+  if(!r)return {error:"초기값에서 계산이 발산했습니다. 다른 모형을 골라 보세요"};
+  return {predict:v=>M.f(v,r.p),nparam:M.np,hist:r.hist,converged:r.converged,
+    iters:r.iters,params:r.p,eq:M.eq(r.p),dropped:dropped,fitX:fx,fitY:fy,
+    sub:dropped?`이 모형의 정의역을 벗어난 점 ${dropped}개를 제외하고 적합했습니다. R²는 남은 ${fx.length}개 기준입니다.`:""};}
+
+/* ═══════════ 반응형 차트 엔진 ═══════════ */
+function geom(){
+  // 창 폭이 아니라 그래프가 실제로 들어갈 칸의 폭으로 등급을 정한다.
+  // (폭 900~1100px에서는 왼쪽 조작부 때문에 그래프 칸이 530px 안팎으로 좁아진다)
+  let cw=0;
+  try{const pe=document.getElementById("plot");if(pe&&pe.clientWidth)cw=pe.clientWidth;}catch(e){}
+  if(!cw){const w=(typeof window!=="undefined"&&window.innerWidth)?window.innerWidth:900;
+    cw=w<900?w-36:Math.min(w,1180)-36-336;}
+  if(cw<420) return {W:360,H:320,PL:46,PR:12,PT:12,PB:40,fs:13,al:13,r:4.2,lw:2.6,dense:60};
+  if(cw<600) return {W:480,H:350,PL:54,PR:14,PT:14,PB:42,fs:12.5,al:13,r:4.0,lw:2.5,dense:90};
+  if(cw<760) return {W:600,H:400,PL:58,PR:16,PT:15,PB:44,fs:12,al:12.5,r:3.9,lw:2.4,dense:120};
+  return            {W:660,H:420,PL:62,PR:18,PT:16,PB:46,fs:12,al:12.5,r:3.8,lw:2.4,dense:150};
+}
+function niceT(lo,hi,tg){
+  if(!(isFinite(lo)&&isFinite(hi)))return {ticks:[0],step:1};
+  if(lo===hi){lo-=.5;hi+=.5;}
+  const raw=(hi-lo)/tg,mag=Math.pow(10,Math.floor(Math.log10(raw))),nm=raw/mag;
+  const step=(nm<1.5?1:nm<3?2:nm<7?5:10)*mag,t=[];
+  for(let v=Math.ceil(lo/step)*step;v<=hi+step*1e-9;v+=step)
+    t.push(Math.abs(v)<step*1e-9?0:v);
+  return {ticks:t,step:step};
+}
+function padR(lo,hi){if(lo===hi){const d=Math.abs(lo)*.1||1;return [lo-d,hi+d];}
+  const m=(hi-lo)*.08;return [lo-m,hi+m];}
+function tickLbl(v,step){if(v===0)return "0";const a=Math.abs(v);
+  if(a<1e-3||a>=1e6)return v.toExponential(1).replace("e+","e");
+  return v.toFixed(step<1?Math.min(6,Math.ceil(-Math.log10(step))):0);}
+function plen(pts){let L=0;for(let i=1;i<pts.length;i++){
+  const dx=pts[i][0]-pts[i-1][0],dy=pts[i][1]-pts[i-1][1];L+=Math.sqrt(dx*dx+dy*dy);}return L;}
+
+function grid(G,xt,yt,xlo,xhi,ylo,yhi,xL,yL,body,extra){
+  const iw=G.W-G.PL-G.PR,ih=G.H-G.PT-G.PB;let g="";
+  for(const t of xt.ticks){const px=G.PL+(t-xlo)/(xhi-xlo)*iw;
+    g+=`<line x1="${px.toFixed(1)}" y1="${G.PT}" x2="${px.toFixed(1)}" y2="${G.PT+ih}" stroke="var(--fine)"/>`;
+    g+=`<text x="${px.toFixed(1)}" y="${G.PT+ih+G.fs+6}" text-anchor="middle" font-size="${G.fs}" fill="var(--soft)" class="num">${esc(tickLbl(t,xt.step))}</text>`;}
+  for(const t of yt.ticks){const py=G.PT+ih-(t-ylo)/(yhi-ylo)*ih;
+    g+=`<line x1="${G.PL}" y1="${py.toFixed(1)}" x2="${G.PL+iw}" y2="${py.toFixed(1)}" stroke="var(--fine)"/>`;
+    g+=`<text x="${G.PL-7}" y="${(py+G.fs*.35).toFixed(1)}" text-anchor="end" font-size="${G.fs}" fill="var(--soft)" class="num">${esc(tickLbl(t,yt.step))}</text>`;}
+  g+=(extra||"");
+  g+=`<rect x="${G.PL}" y="${G.PT}" width="${iw}" height="${ih}" fill="none" stroke="var(--rule)"/>`+body;
+  g+=`<text x="${G.PL+iw/2}" y="${G.H-5}" text-anchor="middle" font-size="${G.al}" fill="var(--soft)">${esc(xL)}</text>`;
+  g+=`<text transform="translate(${G.al} ${G.PT+ih/2}) rotate(-90)" text-anchor="middle" font-size="${G.al}" fill="var(--soft)">${esc(yL)}</text>`;
+  return g;
+}
+const wrapSvg=(G,inner,anim)=>`<svg viewBox="0 0 ${G.W} ${G.H}" class="chart${anim?" anim":""}" role="img" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+const stagger=(i,n)=>Math.min(i*(n>120?1.2:5),260);
+
+/* ─── 적합 곡선 ─── */
+function drawFit(x,y,pred,xL,yL,o){
+  o=o||{};const G=geom(),iw=G.W-G.PL-G.PR,ih=G.H-G.PT-G.PB;
+  const xr=padR(Math.min.apply(null,x),Math.max.apply(null,x));
+  const N=200,ph=[];
+  for(let i=0;i<=N;i++){const v=xr[0]+(xr[1]-xr[0])*i/N,p=pred(v);ph.push([v,isFinite(p)?p:null]);}
+  const py=x.map(pred).filter(isFinite);
+  let ylo=Math.min.apply(null,y),yhi=Math.max.apply(null,y);
+  if(py.length){ylo=Math.min(ylo,Math.min.apply(null,py));yhi=Math.max(yhi,Math.max.apply(null,py));}
+  const sp=(yhi-ylo)||1;
+  const fin=ph.map(q=>q[1]).filter(q=>q!==null&&isFinite(q));
+  if(fin.length){ylo=Math.min(ylo,Math.max(Math.min.apply(null,fin),ylo-sp*1.5));
+    yhi=Math.max(yhi,Math.min(Math.max.apply(null,fin),yhi+sp*1.5));}
+  const yr=padR(ylo,yhi);
+  const tg=G.W<400?4:5,xt=niceT(xr[0],xr[1],tg),yt=niceT(yr[0],yr[1],tg);
+  const SX=v=>G.PL+(v-xr[0])/(xr[1]-xr[0])*iw,SY=v=>G.PT+ih-(v-yr[0])/(yr[1]-yr[0])*ih;
+  const dense=x.length>G.dense;
+  let extra="";
+  if(o.ref){let rd="",op=false;
+    for(const q of ph){const p=o.ref(q[0]);
+      if(!isFinite(p)||p<yr[0]-sp*9||p>yr[1]+sp*9){op=false;continue;}
+      rd+=(op?"L":"M")+SX(q[0]).toFixed(1)+" "+SY(p).toFixed(1)+" ";op=true;}
+    extra+=`<path d="${rd}" fill="none" stroke="var(--faint)" stroke-width="1.6" stroke-dasharray="5 4" opacity=".9"/>`;}
+  let s="";
+  if(o.residuals!==false&&!dense)
+    for(let i=0;i<x.length;i++){const p=pred(x[i]);if(!isFinite(p))continue;
+      s+=`<line x1="${SX(x[i]).toFixed(1)}" y1="${SY(y[i]).toFixed(1)}" x2="${SX(x[i]).toFixed(1)}" y2="${SY(p).toFixed(1)}" stroke="var(--resid)" stroke-width="1.3" opacity=".6"/>`;}
+  let d="",op=false;const seg=[];
+  for(const q of ph){
+    if(q[1]===null||!isFinite(q[1])||q[1]<yr[0]-sp*9||q[1]>yr[1]+sp*9){op=false;continue;}
+    const P=[SX(q[0]),SY(q[1])];seg.push(P);
+    d+=(op?"L":"M")+P[0].toFixed(1)+" "+P[1].toFixed(1)+" ";op=true;}
+  const L=Math.ceil(plen(seg))+10;
+  s+=`<path class="fitline" style="--len:${L}" d="${d}" fill="none" stroke="var(--fit)" stroke-width="${G.lw}" stroke-linejoin="round" stroke-linecap="round"/>`;
+  const rr=dense?G.r*.62:G.r,op2=dense?.6:.95;
+  for(let i=0;i<x.length;i++)
+    s+=`<circle class="pt" data-i="${i}" style="--o:${op2};animation-delay:${stagger(i,x.length)}ms" cx="${SX(x[i]).toFixed(1)}" cy="${SY(y[i]).toFixed(1)}" r="${rr.toFixed(1)}" fill="var(--ink)" opacity="${op2}"/>`;
+  for(let i=0;i<x.length;i++)
+    s+=`<circle class="hit" data-i="${i}" cx="${SX(x[i]).toFixed(1)}" cy="${SY(y[i]).toFixed(1)}" r="${Math.max(11,rr*3).toFixed(1)}" fill="transparent"/>`;
+  s+=`<g id="marker"></g>`;
+  return {svg:wrapSvg(G,grid(G,xt,yt,xr[0],xr[1],yr[0],yr[1],xL,yL,s,extra),o.animate),G:G};
+}
+
+/* ─── 잔차 ─── */
+function drawResid(x,res,xL,rmse,anim){
+  const G=geom(),iw=G.W-G.PL-G.PR,ih=G.H-G.PT-G.PB;
+  const xr=padR(Math.min.apply(null,x),Math.max.apply(null,x));
+  const m=Math.max.apply(null,res.map(Math.abs))||1,yr=[-m*1.2,m*1.2];
+  const tg=G.W<400?4:5,xt=niceT(xr[0],xr[1],tg),yt=niceT(yr[0],yr[1],tg);
+  const SX=v=>G.PL+(v-xr[0])/(xr[1]-xr[0])*iw,SY=v=>G.PT+ih-(v-yr[0])/(yr[1]-yr[0])*ih;
+  const dense=x.length>G.dense;
+  let extra="";
+  if(isFinite(rmse)&&rmse>0){
+    const top=SY(Math.min(rmse,yr[1])),bot=SY(Math.max(-rmse,yr[0]));
+    extra+=`<rect x="${G.PL}" y="${top.toFixed(1)}" width="${iw}" height="${Math.max(0,bot-top).toFixed(1)}" fill="var(--sea)" opacity=".10"/>`;
+    extra+=`<line x1="${G.PL}" y1="${top.toFixed(1)}" x2="${G.PL+iw}" y2="${top.toFixed(1)}" stroke="var(--sea)" stroke-width="1" stroke-dasharray="4 3" opacity=".7"/>`;
+    extra+=`<line x1="${G.PL}" y1="${bot.toFixed(1)}" x2="${G.PL+iw}" y2="${bot.toFixed(1)}" stroke="var(--sea)" stroke-width="1" stroke-dasharray="4 3" opacity=".7"/>`;
+    if(top>G.PT+G.fs+2)
+      extra+=`<text x="${G.PL+iw-4}" y="${(top-4).toFixed(1)}" text-anchor="end" font-size="${G.fs-.5}" fill="var(--sea)">±1 RMSE</text>`;}
+  let s=`<line x1="${G.PL}" y1="${SY(0).toFixed(1)}" x2="${G.PL+iw}" y2="${SY(0).toFixed(1)}" stroke="var(--fit)" stroke-width="1.9"/>`;
+  const rr=dense?G.r*.62:G.r,op2=dense?.6:.95;
+  for(let i=0;i<x.length;i++){if(!isFinite(res[i]))continue;
+    s+=`<line x1="${SX(x[i]).toFixed(1)}" y1="${SY(0).toFixed(1)}" x2="${SX(x[i]).toFixed(1)}" y2="${SY(res[i]).toFixed(1)}" stroke="var(--resid)" stroke-width="1.2" opacity=".5"/>`;
+    s+=`<circle class="pt" data-i="${i}" style="--o:${op2};animation-delay:${stagger(i,x.length)}ms" cx="${SX(x[i]).toFixed(1)}" cy="${SY(res[i]).toFixed(1)}" r="${rr.toFixed(1)}" fill="var(--ink)" opacity="${op2}"/>`;}
+  for(let i=0;i<x.length;i++){if(!isFinite(res[i]))continue;
+    s+=`<circle class="hit" data-i="${i}" cx="${SX(x[i]).toFixed(1)}" cy="${SY(res[i]).toFixed(1)}" r="${Math.max(11,rr*3).toFixed(1)}" fill="transparent"/>`;}
+  s+=`<g id="marker"></g>`;
+  return {svg:wrapSvg(G,grid(G,xt,yt,xr[0],xr[1],yr[0],yr[1],xL,"잔차 (y − ŷ)",s,extra),anim),G:G};
+}
+
+/* ─── 수렴 곡선 ─── */
+function drawLoss(hist,anim){
+  const G=geom(),iw=G.W-G.PL-G.PR,ih=G.H-G.PT-G.PB;
+  const pos=hist.filter(v=>v>0&&isFinite(v));
+  if(pos.length<2)return null;
+  const lo=Math.log10(Math.min.apply(null,pos)),hi=Math.log10(Math.max.apply(null,pos));
+  const yr=lo===hi?[lo-1,hi+1]:[lo-(hi-lo)*.07,hi+(hi-lo)*.07];
+  const xr=[0,Math.max(hist.length,2)],xt=niceT(xr[0],xr[1],G.W<400?4:5);
+  const SX=v=>G.PL+(v-xr[0])/(xr[1]-xr[0])*iw;
+  const SY=v=>G.PT+ih-(Math.log10(v)-yr[0])/(yr[1]-yr[0])*ih;
+  let g="";
+  for(const t of xt.ticks){const px=G.PL+(t-xr[0])/(xr[1]-xr[0])*iw;
+    g+=`<line x1="${px.toFixed(1)}" y1="${G.PT}" x2="${px.toFixed(1)}" y2="${G.PT+ih}" stroke="var(--fine)"/>`;
+    g+=`<text x="${px.toFixed(1)}" y="${G.PT+ih+G.fs+6}" text-anchor="middle" font-size="${G.fs}" fill="var(--soft)" class="num">${t.toFixed(0)}</text>`;}
+  for(let dc=Math.ceil(yr[0]);dc<=Math.floor(yr[1]);dc++){
+    const p=G.PT+ih-(dc-yr[0])/(yr[1]-yr[0])*ih;
+    if(p<G.PT-1||p>G.PT+ih+1)continue;
+    g+=`<line x1="${G.PL}" y1="${p.toFixed(1)}" x2="${G.PL+iw}" y2="${p.toFixed(1)}" stroke="var(--fine)"/>`;
+    g+=`<text x="${G.PL-7}" y="${(p+G.fs*.35).toFixed(1)}" text-anchor="end" font-size="${G.fs}" fill="var(--soft)" class="num">1e${dc}</text>`;}
+  g+=`<rect x="${G.PL}" y="${G.PT}" width="${iw}" height="${ih}" fill="none" stroke="var(--rule)"/>`;
+  let d="",a="";const seg=[];
+  hist.forEach((v,i)=>{if(!(v>0&&isFinite(v)))return;
+    const px=SX(i+1),pv=SY(v);seg.push([px,pv]);
+    d+=(d?"L":"M")+px.toFixed(1)+" "+pv.toFixed(1)+" ";
+    a+=(a?"L":"M"+px.toFixed(1)+" "+(G.PT+ih)+"L")+px.toFixed(1)+" "+pv.toFixed(1)+" ";});
+  if(a)a+=`L${SX(hist.length).toFixed(1)} ${G.PT+ih}Z`;
+  g+=`<path d="${a}" fill="var(--sea)" opacity=".12"/>`;
+  g+=`<path class="fitline" style="--len:${Math.ceil(plen(seg))+10}" d="${d}" fill="none" stroke="var(--sea)" stroke-width="${G.lw}" stroke-linejoin="round"/>`;
+  g+=`<text x="${G.PL+iw/2}" y="${G.H-5}" text-anchor="middle" font-size="${G.al}" fill="var(--soft)">반복 횟수</text>`;
+  g+=`<text transform="translate(${G.al} ${G.PT+ih/2}) rotate(-90)" text-anchor="middle" font-size="${G.al}" fill="var(--soft)">평균제곱오차</text>`;
+  return wrapSvg(G,g,anim);
+}
+
+/* ─── 모형 비교 막대 ─── */
+function drawCompare(rows,anim){
+  const G=geom(),n=rows.length;
+  const rowH=G.W<400?31:27,lblW=G.W<400?108:158;
+  const T0=8,H=T0+n*rowH+26,W=G.W,barL=lblW,barR=W-52,bw=barR-barL;
+  const lo=Math.min(0,Math.min.apply(null,rows.map(r=>Math.min(isFinite(r.adj)?r.adj:0,r.r2))));
+  const SX=v=>barL+(v-lo)/(1-lo)*bw;
+  const fs=G.W<400?12.2:11.5;
+  let g="";
+  for(const t of [0,.25,.5,.75,1]){
+    if(t<lo)continue;const px=SX(t);
+    g+=`<line x1="${px.toFixed(1)}" y1="${T0}" x2="${px.toFixed(1)}" y2="${T0+n*rowH}" stroke="var(--fine)"/>`;
+    g+=`<text x="${px.toFixed(1)}" y="${T0+n*rowH+16}" text-anchor="middle" font-size="${fs-.5}" fill="var(--soft)" class="num">${t}</text>`;}
+  rows.forEach((r,i)=>{
+    const y0=T0+i*rowH,h=rowH-10,x0=SX(Math.max(lo,0));
+    const w1=Math.max(0,SX(Math.max(r.r2,lo))-x0);
+    const w2=isFinite(r.adj)?Math.max(0,SX(Math.max(r.adj,lo))-x0):0;
+    const dly=i*42;
+    g+=`<rect class="cbar" style="animation-delay:${dly}ms" x="${x0.toFixed(1)}" y="${(y0+2).toFixed(1)}" width="${w1.toFixed(1)}" height="${h}" fill="var(--fit)" opacity=".22" rx="1.5"/>`;
+    if(isFinite(r.adj))
+      g+=`<rect class="cbar" style="animation-delay:${dly+70}ms" x="${x0.toFixed(1)}" y="${(y0+2).toFixed(1)}" width="${w2.toFixed(1)}" height="${h}" fill="${r.best?"var(--fit)":"var(--sea)"}" opacity="${r.best?".95":".72"}" rx="1.5"/>`;
+    const cut=G.W<400?11:18;
+    const nm=r.name.length>cut?r.name.slice(0,cut-1)+"…":r.name;
+    g+=`<text x="${barL-8}" y="${(y0+h/2+4).toFixed(1)}" text-anchor="end" font-size="${fs}" fill="${r.best?"var(--fit)":"var(--ink)"}" font-weight="${r.best?"600":"400"}">${esc(nm)}</text>`;
+    g+=`<text x="${W-6}" y="${(y0+h/2+4).toFixed(1)}" text-anchor="end" font-size="${fs}" fill="var(--soft)" class="num">${isFinite(r.adj)?r.adj.toFixed(3):"—"}</text>`;
+    if(!r.conv)g+=`<text x="${(barL+5).toFixed(1)}" y="${(y0+h/2+4).toFixed(1)}" font-size="${fs-1}" fill="var(--warn)">미수렴</text>`;});
+  return `<svg viewBox="0 0 ${W} ${H}" class="chart${anim?" anim":""}" role="img" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">${g}</svg>`;
+}
+
+/* ═══════════ 상태 ═══════════ */
+let MODE="lin", TAB="fit", MODEL="ls", FIT=null, CUR=null, CUSTOM=null, PICK=null;
+let SHOWRES=true, REF=false, RAW=null;
+const KNOB={deg:2,H:6,lr:12,ep:2500,glr:25,gep:3000};
+const el={};
+["dataset","src","ntag","drawer","data","msg","colpick","colx","coly","model","mlead","mnote",
+ "knobs","eq","subeq","stats","alert","plot","note","pick","px","py","pwarn","restable",
+ "srclist","mind","tind","modesub","tabs"].forEach(k=>el[k]=$(k));
+
+const LINMODELS={
+  ls:{label:"최소제곱법 (정확해)",
+    note:"편미분으로 유도한 공식을 한 번에 풀어 정확한 답을 구합니다. 반복 계산이 없습니다."},
+  gd:{label:"경사하강법 (반복 학습)",
+    note:"오차를 조금씩 줄여가며 직선을 찾습니다. 충분히 반복하면 최소제곱법과 같은 값에 도달합니다.",
+    knobs:[{id:"glr",label:"학습률",min:1,max:60,step:1,fmt:v=>(v/500).toFixed(3)},
+           {id:"gep",label:"최대 반복",min:100,max:6000,step:100,fmt:v=>v}]}
+};
+const MLEAD={lin:"같은 직선을 두 방법으로 구해 결과를 견줘 봅니다.",
+             non:"곡선 모양을 고르면 데이터에 맞게 계수를 찾아 줍니다."};
+
+/* ═══════════ 선형 적합 ═══════════ */
+function leastSquares(x,y){
+  const mx=mean(x),my=mean(y);let nu=0,de=0;
+  for(let i=0;i<x.length;i++){nu+=(x[i]-mx)*(y[i]-my);de+=(x[i]-mx)*(x[i]-mx);}
+  if(Math.abs(de)<1e-15)return {error:"x 값이 모두 같습니다. 수직선은 y = ax + b 로 나타낼 수 없습니다"};
+  const a=nu/de,b=my-a*mx;
+  return {predict:v=>a*v+b,nparam:2,a:a,b:b,converged:true,eq:lineEq(a,b),hist:null};
+}
+function gradientDescent(x,y,lr,maxEp){
+  const n=x.length,mx=mean(x),sx=sd(x),my=mean(y),sy=sd(y);
+  if(sx<1e-15)return {error:"x 값이 모두 같습니다. 기울기를 정의할 수 없습니다"};
+  if(sy<1e-15)return {predict:()=>my,nparam:2,a:0,b:my,converged:true,eq:lineEq(0,my),hist:[0],iters:0};
+  const X=x.map(v=>(v-mx)/sx),Y=y.map(v=>(v-my)/sy);
+  let as=0,bs=0,prev=Infinity;const hist=[];let used=maxEp,conv=false;
+  for(let e=1;e<=maxEp;e++){
+    let ga=0,gb=0,sse=0;
+    for(let i=0;i<n;i++){const err=Y[i]-(as*X[i]+bs);ga+=X[i]*err;gb+=err;sse+=err*err;}
+    as-=lr*(-2/n*ga);bs-=lr*(-2/n*gb);
+    const mse=sse/n;hist.push(mse);
+    if(!isFinite(mse)){used=e;break;}
+    if(Math.abs(prev-mse)<1e-14){used=e;conv=true;break;}
+    prev=mse;}
+  const a=(sy/sx)*as,b=my+sy*bs-a*mx;
+  return {predict:v=>a*v+b,nparam:2,a:a,b:b,converged:conv,eq:lineEq(a,b),hist:hist,iters:used,
+    sub:"x와 y를 표준화해 학습한 뒤 계수를 원래 단위로 되돌립니다. 값의 크기가 커도 발산하지 않습니다."};
+}
+function lineEq(a,b){
+  return `y = <span class="coef">${esc(fmt(a))}</span>x ${b>=0?"+":"−"} <span class="coef">${esc(fmt(Math.abs(b)))}</span>`;}
+
+/* ═══════════ 데이터 ═══════════ */
+function activeData(){
+  if(CUSTOM)return CUSTOM;
+  const d=DATASETS.find(s=>s.id===el.dataset.value)||DATASETS[0];
+  return {x:d.pts.map(p=>p[0]),y:d.pts.map(p=>p[1]),xl:d.xl,yl:d.yl,
+          label:d.label,src:d.src,note:d.note,hint:d.hint};
+}
+function parseTable(text){
+  const lines=text.split(/\r?\n/).filter(l=>l.trim());
+  if(!lines.length)return null;
+  const split=l=>l.split(/[,;\t]|\s{2,}/).map(s=>s.trim().replace(/^"|"$/g,""));
+  let head=split(lines[0]);
+  const numericFirst=head.filter(c=>c!==""&&isFinite(Number(c))).length>=2;
+  let body=lines.slice(numericFirst?0:1).map(split);
+  if(numericFirst)head=head.map((_,i)=>"열 "+(i+1));
+  const nc=Math.max(...body.map(r=>r.length),head.length);
+  while(head.length<nc)head.push("열 "+(head.length+1));
+  return {head:head.slice(0,nc),body:body};
+}
+function buildFromTable(T,ix,iy){
+  const rows=[],bad=[];
+  T.body.forEach((r,i)=>{
+    const a=Number(r[ix]),b=Number(r[iy]);
+    if(isFinite(a)&&isFinite(b))rows.push([a,b]);else bad.push(i+1);});
+  return {rows:rows,bad:bad};
+}
+function refreshCustom(){
+  if(!RAW){CUSTOM=null;return;}
+  const ix=Number(el.colx.value||0),iy=Number(el.coly.value||1);
+  const r=buildFromTable(RAW,ix,iy);
+  if(r.bad.length){
+    el.msg.className="msg";
+    el.msg.textContent=`${r.rows.length}개 점을 읽었습니다. 숫자가 아닌 ${r.bad.length}개 행은 건너뛰었습니다.`;
+    el.msg.hidden=false;
+  }else if(r.rows.length){
+    el.msg.className="msg ok";
+    el.msg.textContent=`${r.rows.length}개 점을 읽었습니다.`;el.msg.hidden=false;
+  }else{el.msg.className="msg";el.msg.textContent="숫자를 하나도 찾지 못했습니다. 한 줄에 숫자가 두 개씩 있어야 합니다.";el.msg.hidden=false;}
+  CUSTOM={x:r.rows.map(p=>p[0]),y:r.rows.map(p=>p[1]),
+    xl:RAW.head[ix]||"x",yl:RAW.head[iy]||"y",label:"직접 넣은 데이터",src:"",note:""};
+}
+function loadText(txt){
+  RAW=parseTable(txt);
+  if(!RAW||!RAW.head.length){CUSTOM=null;RAW=null;return;}
+  const fill=(sel,pick)=>{sel.innerHTML=RAW.head.map((h,i)=>`<option value="${i}">${esc(h)}</option>`).join("");
+    sel.value=String(Math.min(pick,RAW.head.length-1));};
+  fill(el.colx,0);fill(el.coly,1);
+  el.colpick.hidden=RAW.head.length<3;
+  refreshCustom();
+}
+
+/* ═══════════ 계산 ═══════════ */
+function runModel(x,y){
+  if(MODE==="lin")
+    return MODEL==="gd"?gradientDescent(x,y,KNOB.glr/500,KNOB.gep):leastSquares(x,y);
+  return runFit(x,y,MODEL,KNOB);
+}
+let timer=null;
+function schedule(anim){clearTimeout(timer);timer=setTimeout(()=>compute(anim),110);}
+
+function compute(anim){
+  const d=activeData();CUR=d;
+  el.ntag.textContent=d.x.length?`${d.x.length}개 점`:"—";
+  el.src.innerHTML=CUSTOM
+    ? `<b>직접 넣은 데이터</b><br>x는 ${esc(d.xl)}, y는 ${esc(d.yl)}`
+    : `<b>${esc(d.label)}</b><br>${esc(d.src)}<br>${esc(d.note)}`;
+
+  if(d.x.length<2)return fail("점이 2개 이상 있어야 계산할 수 있습니다","데이터를 넣으면 그래프가 그려집니다");
+  const r=runModel(d.x,d.y);
+  if(r.error)return fail(r.error,r.error);
+
+  const ex=r.fitX||d.x,ey=r.fitY||d.y;
+  const g=diag(ex,ey,r.predict,r.nparam);
+  FIT=Object.assign({},r,g,{x:d.x,y:d.y,evalX:ex,evalY:ey});
+  render(anim!==false);
+}
+function fail(msg,plot){
+  FIT=null;el.eq.className="eq idle";el.eq.textContent=msg;
+  el.subeq.textContent="";el.stats.innerHTML="";el.alert.hidden=true;
+  el.plot.innerHTML=`<p class="empty">${esc(plot)}</p>`;el.note.textContent="";
+  el.restable.innerHTML="";el.pick.hidden=true;updatePredict();
+}
+
+/* ═══════════ 숫자 트윈 ═══════════ */
+const REDUCED=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const LAST={};
+function tween(node,to,dec,key){
+  const had=Object.prototype.hasOwnProperty.call(LAST,key);
+  const from=had?LAST[key]:to;
+  LAST[key]=to;
+  // 첫 표시이거나, 변화가 눈에 안 띌 만큼 작으면 트윈 없이 바로 쓴다
+  if(REDUCED||!had||!isFinite(from)||!isFinite(to)||Math.abs(to-from)<Math.pow(10,-dec)/2){
+    node.textContent=to.toFixed(dec);return;}
+  const t0=performance.now(),dur=420;
+  (function step(t){
+    const k=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-k,3);
+    node.textContent=(from+(to-from)*e).toFixed(dec);
+    if(k<1)requestAnimationFrame(step);else node.textContent=to.toFixed(dec);
+  })(t0);
+}
+function statCard(key,label,val,dec,flag,bar){
+  const num=isFinite(val);
+  return `<div class="st${flag?" "+flag:""}"><dt>${esc(label)}</dt>`+
+    `<dd class="num" data-k="${key}" data-to="${num?val:""}" data-dec="${dec}">`+
+    `${num?esc((Object.prototype.hasOwnProperty.call(LAST,key)?LAST[key]:val).toFixed(dec)):esc(String(val))}</dd>`+
+    (bar&&num?`<div class="bar"><i style="width:0" data-w="${Math.max(0,Math.min(1,val))*100}%"></i></div>`:"")+`</div>`;
+}
+
+
+/* ═══════════ 표 숫자 형식 ═══════════ */
+function rawNum(v){
+  if(!isFinite(v))return "—";
+  const t=Number(v.toPrecision(10));
+  const s=String(t);
+  return /e/i.test(s)?t.toExponential(3):s;
+}
+function colDec(arr){
+  const m=Math.max.apply(null,arr.map(v=>Math.abs(v)).filter(isFinite))||1;
+  return Math.max(1,Math.min(4,3-Math.floor(Math.log10(m))));
+}
+/* ═══════════ 렌더 ═══════════ */
+function render(anim){
+  const f=FIT;
+  if(anim&&!REDUCED){el.eq.classList.add("swap");
+    setTimeout(()=>{el.eq.className="eq";el.eq.innerHTML=f.eq||"—";},140);}
+  else{el.eq.className="eq";el.eq.innerHTML=f.eq||"—";}
+  el.subeq.textContent=f.sub||"";
+
+  const overfit=isFinite(f.adj)&&isFinite(f.r2)&&(f.r2-f.adj)>0.05;
+  const weak=isFinite(f.r2)&&f.r2<0.5;
+  el.stats.innerHTML=
+    statCard("r2","결정계수 R²",f.r2,4,weak?"flagged":(f.r2>0.9?"good":""),true)+
+    statCard("adj","조정 R²",isFinite(f.adj)?f.adj:"계산 불가",4,overfit?"flagged":"",true)+
+    statCard("rmse","RMSE",f.rmse,3,"",false)+
+    statCard("np","파라미터 수",f.nparam,0,"",false)+
+    statCard("n","데이터 수",f.n,0,"",false);
+  el.stats.querySelectorAll("dd[data-to]").forEach(nd=>{
+    const key=nd.getAttribute("data-k"),to=nd.getAttribute("data-to");
+    if(to===""){delete LAST[key];return;}
+    tween(nd,Number(to),Number(nd.getAttribute("data-dec")),key);});
+  requestAnimationFrame(()=>el.stats.querySelectorAll(".bar i").forEach(b=>b.style.width=b.getAttribute("data-w")));
+
+  const w=[];
+  if(f.converged===false)w.push("반복 횟수를 다 쓰고도 수렴하지 못했습니다. 이 데이터에 맞지 않는 모형이거나 파라미터가 무한대로 달아나는 중입니다. 계수를 그대로 가져다 쓰면 안 됩니다.");
+  if(!isFinite(f.adj))w.push(`파라미터 수(${f.nparam})가 데이터 수(${f.n})에 비해 너무 많아 조정 R²를 계산할 수 없습니다. 이 상태의 R²는 의미가 없습니다.`);
+  else if(overfit)w.push(`R²와 조정 R²가 ${(f.r2-f.adj).toFixed(3)}만큼 벌어져 있습니다. 파라미터 수에 비해 데이터가 부족하다는 뜻입니다.`);
+  el.alert.innerHTML=w.join("<br><br>");el.alert.hidden=!w.length;
+
+  renderPlot(anim);renderTable();updatePredict();
+}
+
+function renderPlot(anim){
+  const f=FIT,d=CUR;if(!f)return;
+  const showLoss=TAB==="loss",showCmp=TAB==="cmp";
+  if(TAB==="fit"){
+    let ref=null;
+    if(REF){const r1=MODE==="lin"?null:runFit(d.x,d.y,"poly",{deg:1});
+      if(r1&&!r1.error)ref=r1.predict;}
+    const r=drawFit(d.x,d.y,f.predict,d.xl||"x",d.yl||"y",{residuals:SHOWRES,ref:ref,animate:anim});
+    el.plot.innerHTML=r.svg;
+    el.note.textContent=(d.x.length>r.G.dense?"점이 많아 잔차선은 숨겼습니다. ":
+      "점이 측정값, 빨간 선이 적합 결과, 분홍 세로선이 잔차입니다. ")+
+      (ref?"회색 점선은 비교용 1차 직선입니다. ":"")+"점을 누르면 그 점의 값과 잔차가 나옵니다.";
+  }else if(TAB==="resid"){
+    el.plot.innerHTML=drawResid(f.evalX,f.res,d.xl||"x",f.rmse,anim).svg;
+    el.note.textContent="푸른 띠가 ±1 RMSE 구간입니다. 점들이 띠 안에 고르게 흩어져 있으면 좋은 모형이고, 활처럼 휘거나 한쪽으로 퍼지면 모형 모양이 데이터와 안 맞는다는 신호입니다.";
+  }else if(showLoss){
+    if(!f.hist){el.plot.innerHTML=`<p class="empty">이 방법은 반복 없이 한 번에 답을 구하므로 수렴 곡선이 없습니다</p>`;
+      el.note.textContent=MODE==="lin"?"경사하강법을 고르면 오차가 줄어드는 과정을 볼 수 있습니다."
+        :"지수·거듭제곱·포화·로지스틱·신경망을 고르면 오차가 줄어드는 과정을 볼 수 있습니다.";
+    }else{const s=drawLoss(f.hist,anim);
+      el.plot.innerHTML=s||`<p class="empty">오차 변화가 없어 로그 축에 그릴 수 없습니다</p>`;
+      el.note.textContent=`${f.iters}회 반복했습니다.`+(f.converged?" 더 나아지는 폭이 충분히 작아져서 멈췄습니다.":" 수렴하지 못한 채 반복 상한에 걸렸습니다.");}
+  }else{renderCompare(anim);}
+  if(TAB==="fit"||TAB==="resid")bindPoints();else{PICK=null;el.pick.hidden=true;}
+  const pb=$("plotbar");
+  pb.classList.toggle("off",TAB!=="fit");
+  pb.classList.toggle("gone",TAB==="loss"||TAB==="cmp");
+}
+
+function renderCompare(anim){
+  const d=CUR,rows=[];
+  if(MODE==="lin"){
+    const a=leastSquares(d.x,d.y),b=gradientDescent(d.x,d.y,KNOB.glr/500,KNOB.gep);
+    if(!a.error)rows.push({name:"최소제곱법",r:a,ex:d.x,ey:d.y});
+    if(!b.error)rows.push({name:"경사하강법",r:b,ex:d.x,ey:d.y});
+    [2,3,4].forEach(dg=>{const r=runFit(d.x,d.y,"poly",{deg:dg});
+      if(!r.error)rows.push({name:`${dg}차 다항식`,r:r,ex:d.x,ey:d.y});});
+  }else{
+    [1,2,3,4,5].forEach(dg=>{const r=runFit(d.x,d.y,"poly",{deg:dg});
+      if(!r.error)rows.push({name:`${dg}차 다항식`,r:r,ex:d.x,ey:d.y});});
+    ["exp","pow","log","mm","logistic"].forEach(k=>{const r=runFit(d.x,d.y,k,{});
+      if(!r.error)rows.push({name:MODELS[k].label.split("  ")[0],r:r,ex:r.fitX||d.x,ey:r.fitY||d.y});});
+    const nr=runFit(d.x,d.y,"nn",KNOB);
+    if(!nr.error)rows.push({name:`신경망 ${KNOB.H}뉴런`,r:nr,ex:d.x,ey:d.y});
+  }
+  const out=rows.map(o=>{const g=diag(o.ex,o.ey,o.r.predict,o.r.nparam);
+    return {name:o.name,r2:g.r2,adj:g.adj,rmse:g.rmse,np:o.r.nparam,
+      conv:o.r.converged!==false,drop:o.r.dropped||0};});
+  let ba=-Infinity,bi=-1,br=-Infinity,ri=-1;
+  out.forEach((o,i)=>{if(isFinite(o.adj)&&o.conv&&o.adj>ba){ba=o.adj;bi=i;}
+    if(isFinite(o.r2)&&o.conv&&o.r2>br){br=o.r2;ri=i;}});
+  out.forEach((o,i)=>o.best=(i===bi));
+  let h=`<p class="cmpcap">막대 끝까지가 R², 안쪽에 칠한 부분이 조정 R²입니다. 끝의 붉은 꼬리가 길수록 과적합입니다.</p>`+drawCompare(out,anim);
+  h+=`<div class="scroller" style="max-height:none;margin-top:12px"><table class="tbl">`+
+     `<thead><tr><th>모형</th><th>R²</th><th>조정 R²</th><th>격차</th><th>RMSE</th><th>p</th></tr></thead><tbody>`;
+  out.forEach((o,i)=>{
+    const gap=isFinite(o.adj)?o.r2-o.adj:null,fl=[];
+    if(!o.conv)fl.push("미수렴");if(o.drop)fl.push(`${o.drop}점 제외`);
+    h+=`<tr${i===bi?' class="sel"':""}><td>${i===bi?"● ":""}${esc(o.name)}`+
+      `${fl.length?` <span style="color:var(--warn);font-size:.9em">(${esc(fl.join(", "))})</span>`:""}</td>`+
+      `<td class="num">${esc(isFinite(o.r2)?o.r2.toFixed(4):"—")}</td>`+
+      `<td class="num">${esc(isFinite(o.adj)?o.adj.toFixed(4):"—")}</td>`+
+      `<td class="num" style="color:${gap!==null&&gap>.05?"var(--warn)":"var(--soft)"}">${gap!==null?esc(gap.toFixed(4)):"—"}</td>`+
+      `<td class="num">${esc(fmt(o.rmse,4))}</td><td class="num">${o.np}</td></tr>`;});
+  el.plot.innerHTML=h+"</tbody></table></div>";
+  el.note.textContent = bi<0?"비교할 수 있는 모형이 없습니다."
+    :(bi===ri?`조정 R²로 보면 가장 나은 건 ${out[bi].name}이고, R²로 봐도 같은 결과입니다. 복잡한 모형을 쓸 이유가 분명한 경우입니다.`
+      :`조정 R²로 보면 가장 나은 건 ${out[bi].name}인데, R²로 보면 ${out[ri].name}이 1위입니다. 막대 끝의 붉은 꼬리가 길수록 파라미터 수에 비해 데이터가 부족하다는 뜻입니다.`);
+}
+
+/* ═══════════ 점 선택 ═══════════ */
+function bindPoints(){
+  const svg=el.plot.querySelector("svg");
+  if(!svg){showPick(null);return;}
+  svg.querySelectorAll(".hit").forEach(n=>{
+    const i=Number(n.getAttribute("data-i"));
+    n.addEventListener("click",ev=>{ev.preventDefault();showPick(i);});
+    n.addEventListener("mouseenter",()=>showPick(i));});
+  if(PICK!==null)showPick(PICK);
+}
+function showPick(i){
+  const f=FIT,svg=el.plot.querySelector("svg"),mk=svg?svg.querySelector("#marker"):null;
+  if(mk)mk.innerHTML="";
+  el.restable.querySelectorAll("tr.sel").forEach(t=>t.classList.remove("sel"));
+  if(i===null||!f||i>=f.evalX.length){PICK=null;el.pick.hidden=true;return;}
+  PICK=i;
+  const xv=f.evalX[i],yv=f.evalY[i],pv=f.predict(xv),rv=f.res[i];
+  if(mk){const t=svg.querySelector(`.pt[data-i="${i}"]`);
+    if(t)mk.innerHTML=`<circle cx="${t.getAttribute("cx")}" cy="${t.getAttribute("cy")}" r="9.5" fill="none" stroke="var(--sea)" stroke-width="2.2"/>`+
+      `<circle cx="${t.getAttribute("cx")}" cy="${t.getAttribute("cy")}" r="3.4" fill="var(--sea)"/>`;}
+  const row=el.restable.querySelector(`tr[data-i="${i}"]`);if(row)row.classList.add("sel");
+  el.pick.hidden=false;
+  el.pick.innerHTML=`<span class="pk"><b>#${i+1}</b></span>`+
+    `<span class="pk">${esc(CUR.xl||"x")} <span class="num">${esc(rawNum(xv))}</span></span>`+
+    `<span class="pk">${esc(CUR.yl||"y")} <span class="num">${esc(rawNum(yv))}</span></span>`+
+    `<span class="pk">예측 <span class="num">${esc(pv.toFixed(colDec(f.evalY)))}</span></span>`+
+    `<span class="pk ${Math.abs(rv)>f.rmse?"big":""}">잔차 <span class="num">${esc(rv.toFixed(colDec(f.evalY)))}</span>`+
+    `${Math.abs(rv)>f.rmse?" · RMSE 초과":""}</span>`;
+}
+
+function renderTable(){
+  const f=FIT;
+  const idx=f.evalX.map((_,i)=>i).sort((a,b)=>Math.abs(f.res[b])-Math.abs(f.res[a])).slice(0,80);
+  const dc=colDec(f.evalY);
+  const fx=v=>isFinite(v)?v.toFixed(dc):"—";
+  let h=`<thead><tr><th>#</th><th>${esc(CUR.xl||"x")}</th><th>${esc(CUR.yl||"y")}</th><th>예측</th><th>잔차</th></tr></thead><tbody>`;
+  for(const i of idx)
+    h+=`<tr data-i="${i}"><td>${i+1}</td><td class="num">${esc(rawNum(f.evalX[i]))}</td>`+
+       `<td class="num">${esc(rawNum(f.evalY[i]))}</td><td class="num">${esc(fx(f.predict(f.evalX[i])))}</td>`+
+       `<td class="num"${Math.abs(f.res[i])>f.rmse?' style="color:var(--warn)"':""}>${esc(fx(f.res[i]))}</td></tr>`;
+  el.restable.innerHTML=h+"</tbody>";
+  el.restable.querySelectorAll("tr[data-i]").forEach(tr=>
+    tr.addEventListener("click",()=>{
+      if(TAB!=="fit"&&TAB!=="resid"){setTab("fit");}
+      showPick(Number(tr.getAttribute("data-i")));
+      el.plot.scrollIntoView({behavior:REDUCED?"auto":"smooth",block:"center"});}));
+}
+
+function updatePredict(){
+  const v=Number(el.px.value);
+  if(!FIT||el.px.value===""||!isFinite(v)){el.py.textContent="—";el.pwarn.hidden=true;return;}
+  const p=FIT.predict(v);
+  el.py.textContent=isFinite(p)?"ŷ = "+fmt(p,6):"정의역 밖";
+  const lo=Math.min.apply(null,CUR.x),hi=Math.max.apply(null,CUR.x);
+  if(v<lo||v>hi){el.pwarn.textContent=`x = ${fmt(v,5)}은 데이터가 있는 구간(${fmt(lo,5)} ~ ${fmt(hi,5)}) 바깥입니다. 구간 밖 예측은 근거가 약하고, 특히 비선형 모형은 금방 크게 어긋납니다.`;
+    el.pwarn.hidden=false;}
+  else el.pwarn.hidden=true;
+}
+
+/* ═══════════ 모드 · 탭 · 슬라이더 ═══════════ */
+function slideInd(ind,btn,container){
+  if(!btn)return;
+  const r=btn.getBoundingClientRect(),c=container.getBoundingClientRect();
+  ind.style.width=r.width+"px";
+  ind.style.transform=`translateX(${r.left-c.left+container.scrollLeft}px)`;
+}
+function setMode(m,first){
+  MODE=m;
+  $("mode-lin").setAttribute("aria-pressed",String(m==="lin"));
+  $("mode-non").setAttribute("aria-pressed",String(m==="non"));
+  slideInd(el.mind,$(m==="lin"?"mode-lin":"mode-non"),$("mode-lin").parentNode);
+  el.modesub.textContent=m==="lin"?"직선 하나를 두 가지 방법으로 구합니다":"곡선 모양을 고르고 과적합을 가려냅니다";
+  el.mlead.textContent=MLEAD[m];
+  // 모형 목록 교체
+  const list=m==="lin"?LINMODELS:MODELS;
+  el.model.innerHTML=Object.keys(list).map(k=>`<option value="${k}">${esc(list[k].label)}</option>`).join("");
+  MODEL=m==="lin"?"ls":(CUR&&CUR.hint?(CUR.hint.startsWith("poly")?"poly":CUR.hint):"poly");
+  if(!list[MODEL])MODEL=Object.keys(list)[0];
+  el.model.value=MODEL;
+  $("tog-ref").style.display=m==="lin"?"none":"";
+  if(m==="lin"){REF=false;$("tog-ref").setAttribute("aria-pressed","false");}
+  syncModel(!first);
+  if(!first){
+    el.model.parentNode.classList.remove("fade");void el.model.parentNode.offsetWidth;
+    el.model.parentNode.classList.add("fade");
+  }
+}
+function syncModel(anim){
+  const list=MODE==="lin"?LINMODELS:MODELS;
+  const M=list[MODEL]||{};
+  el.mnote.textContent=M.note||"";
+  el.knobs.innerHTML="";
+  (M.knobs||[]).forEach(k=>{
+    const w=document.createElement("div");w.className="knob";
+    w.innerHTML=`<span>${esc(k.label)}</span><output class="num" id="o-${k.id}">${esc(String(k.fmt(KNOB[k.id])))}</output>`+
+      `<input type="range" id="k-${k.id}" min="${k.min}" max="${k.max}" step="${k.step}" value="${KNOB[k.id]}" aria-label="${esc(k.label)}">`;
+    el.knobs.appendChild(w);
+    $("k-"+k.id).addEventListener("input",ev=>{
+      KNOB[k.id]=Number(ev.target.value);
+      $("o-"+k.id).textContent=k.fmt(KNOB[k.id]);
+      schedule(false);});});
+  compute(anim);
+}
+function setTab(id){
+  TAB=id;
+  document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",String(t.id==="tab-"+id)));
+  slideInd(el.tind,$("tab-"+id),el.tabs);
+  el.plot.setAttribute("aria-labelledby","tab-"+id);
+  PICK=null;el.pick.hidden=true;
+  if(FIT)renderPlot(true);
+}
+
+/* ═══════════ 이벤트 ═══════════ */
+$("mode-lin").addEventListener("click",()=>{if(MODE!=="lin")setMode("lin");});
+$("mode-non").addEventListener("click",()=>{if(MODE!=="non")setMode("non");});
+document.querySelectorAll(".tab").forEach(t=>
+  t.addEventListener("click",()=>setTab(t.id.replace("tab-",""))));
+el.model.addEventListener("change",()=>{MODEL=el.model.value;syncModel(true);});
+el.dataset.addEventListener("change",()=>{
+  CUSTOM=null;RAW=null;el.drawer.classList.remove("open");
+  el.msg.hidden=true;el.colpick.hidden=true;PICK=null;
+  const d=DATASETS.find(s=>s.id===el.dataset.value);
+  if(MODE==="non"&&d&&d.hint){MODEL=d.hint.startsWith("poly")?"poly":d.hint;
+    if(d.hint==="poly2")KNOB.deg=2;
+    if(MODELS[MODEL]){el.model.value=MODEL;syncModel(true);return;}}
+  compute(true);});
+el.colx.addEventListener("change",()=>{refreshCustom();compute(true);});
+el.coly.addEventListener("change",()=>{refreshCustom();compute(true);});
+el.px.addEventListener("input",updatePredict);
+el.data.addEventListener("input",()=>{clearTimeout(timer);
+  timer=setTimeout(()=>{loadText(el.data.value);compute(false);},200);});
+
+$("btn-own").addEventListener("click",()=>{
+  const open=el.drawer.classList.toggle("open");
+  if(open){
+    if(!el.data.value.trim()){
+      const d=activeData();
+      el.data.value=`${d.xl}, ${d.yl}\n`+d.x.map((v,i)=>`${v}, ${d.y[i]}`).join("\n");
+    }
+    loadText(el.data.value);compute(true);
+    setTimeout(()=>el.data.focus(),260);
+  }else{CUSTOM=null;RAW=null;el.msg.hidden=true;el.colpick.hidden=true;compute(true);}
+});
+$("file").addEventListener("change",ev=>{
+  const f=ev.target.files&&ev.target.files[0];if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{el.data.value=String(rd.result).replace(/^\uFEFF/,"");
+    el.drawer.classList.add("open");loadText(el.data.value);compute(true);};
+  rd.onerror=()=>{el.msg.className="msg";
+    el.msg.textContent="파일을 읽지 못했습니다. 텍스트로 된 CSV가 맞는지 확인해 주세요.";el.msg.hidden=false;};
+  rd.readAsText(f,"utf-8");ev.target.value="";});
+$("tog-res").addEventListener("click",()=>{SHOWRES=!SHOWRES;
+  $("tog-res").setAttribute("aria-pressed",String(SHOWRES));if(FIT)renderPlot(false);});
+$("tog-ref").addEventListener("click",()=>{REF=!REF;
+  $("tog-ref").setAttribute("aria-pressed",String(REF));if(FIT)renderPlot(true);});
+
+let lastW=window.innerWidth,rt=null;
+window.addEventListener("resize",()=>{clearTimeout(rt);
+  rt=setTimeout(()=>{
+    slideInd(el.mind,$(MODE==="lin"?"mode-lin":"mode-non"),$("mode-lin").parentNode);
+    slideInd(el.tind,$("tab-"+TAB),el.tabs);
+    if(Math.abs(window.innerWidth-lastW)<40)return;
+    lastW=window.innerWidth;if(FIT)renderPlot(false);},180);});
+
+/* ═══════════ 시작 ═══════════ */
+(function init(){
+  DATASETS.forEach(d=>{const o=document.createElement("option");
+    o.value=d.id;o.textContent=`${d.label} (${d.pts.length}개)`;el.dataset.appendChild(o);});
+  el.srclist.innerHTML=DATASETS.map(d=>`<li><b>${esc(d.label)}</b>${esc(d.src)}</li>`).join("");
+  // 제출 정보
+  $("fid-course").textContent=SITE.course||"";
+  $("fid-term").textContent=SITE.term||"";
+  if(SITE.author){$("fid-author").textContent=SITE.author+(SITE.studentId?` (${SITE.studentId})`:"");$("fid-author").hidden=false;}
+  // 저장소 주소를 비워 두면, GitHub Pages 주소(아이디.github.io/저장소)에서 거꾸로 알아낸다
+  if(!SITE.repo&&/\.github\.io$/i.test(location.hostname)){
+    const user=location.hostname.split(".")[0];
+    const repo=location.pathname.split("/").filter(Boolean)[0];
+    SITE.repo=repo?`https://github.com/${user}/${repo}`:`https://github.com/${user}/${user}.github.io`;
+  }
+  if(SITE.repo){$("fid-repo").innerHTML=`<a href="${esc(SITE.repo)}" target="_blank" rel="noopener">소스 코드 보기</a>`;$("fid-repo").hidden=false;}
+  // 노션 등 다른 페이지 안에 들어가 있으면 머리를 고정하지 않는다
+  let framed=false;try{framed=window.self!==window.top;}catch(e){framed=true;}
+  if(framed)document.documentElement.classList.add("embed");
+  let s=null;try{const v=localStorage.getItem("reg.v2");if(v)s=JSON.parse(v);}catch(e){}
+  if(s&&s.ds&&DATASETS.some(d=>d.id===s.ds))el.dataset.value=s.ds;
+  CUR=activeData();
+  setMode(s&&s.mode==="non"?"non":"lin",true);
+  setTab("fit");
+  requestAnimationFrame(()=>{
+    slideInd(el.mind,$(MODE==="lin"?"mode-lin":"mode-non"),$("mode-lin").parentNode);
+    slideInd(el.tind,$("tab-"+TAB),el.tabs);});
+  window.addEventListener("beforeunload",()=>{
+    try{localStorage.setItem("reg.v2",JSON.stringify({ds:el.dataset.value,mode:MODE}));}catch(e){}});
+})();
+
+</script>
+</body>
+</html>
