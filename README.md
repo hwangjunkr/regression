@@ -2,7 +2,7 @@
 
 데이터처리개론(2026년 2학기) 과제로 만든 회귀분석 웹 도구입니다. 브라우저로 열기만 하면 되고 설치할 것은 없습니다.
 
-![적합 화면](docs/shot-full.png)
+![적합 화면](shot-full.png)
 
 ## 기능
 
@@ -12,7 +12,7 @@
 
 두 모드 모두 R²와 조정 R²를 함께 보여주고, 과적합이 의심되거나 계산이 수렴하지 않으면 경고를 띄웁니다. 잔차 그래프에는 ±1 RMSE 구간을 표시하고, 점을 누르면 그 점의 값과 잔차를 확인할 수 있습니다.
 
-![모형 비교 화면](docs/shot-compare.png)
+![모형 비교 화면](shot-compare.png)
 
 모형 비교 화면은 모형마다 R²와 조정 R²를 한 막대에 겹쳐 그립니다. 막대 끝의 붉은 꼬리가 길수록 파라미터 수에 비해 데이터가 부족하다는 뜻입니다.
 
@@ -51,11 +51,11 @@
 
 ```
 index.html                   웹 도구 전체 (이 파일 하나로 동작)
-python/linear_regression.py  선형회귀 파이썬 버전
-docs/                        README용 화면 이미지
+linear_regression.py         선형회귀 파이썬 버전
+shot-*.png, cover.png        화면 이미지 (README와 노션 표지용)
 ```
 
-파이썬 버전 실행: `pip install numpy matplotlib` 후 `python python/linear_regression.py` (CSV를 쓰려면 파일 경로를 뒤에 붙입니다).
+파이썬 버전 실행: `pip install numpy matplotlib` 후 `python linear_regression.py` (CSV를 쓰려면 파일 경로를 뒤에 붙입니다).
 
 ## 참고
 
