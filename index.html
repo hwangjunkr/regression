@@ -183,7 +183,7 @@ body{margin:0;background:var(--paper);color:var(--ink);
   padding:26px 18px calc(30px + env(safe-area-inset-bottom,0px))}
 .footin{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:1fr;gap:20px;
   font-size:.77rem;line-height:1.65;color:var(--soft)}
-@media (min-width:900px){.footin{grid-template-columns:200px minmax(0,1.35fr) minmax(0,1fr);gap:34px}}
+@media (min-width:900px){.footin{grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:34px}}
 .footin p{margin:0 0 7px}
 .fid-t{color:var(--ink);font-weight:600;font-size:.82rem;margin-bottom:6px!important}
 .fid a,.fsrc a{color:var(--sea);text-decoration:none;border-bottom:1px solid color-mix(in srgb,var(--sea) 35%,transparent)}
@@ -363,7 +363,7 @@ table.tbl tr.sel{background:var(--wash)}
 
 <footer class="foot">
   <div class="footin">
-    <div class="fid">
+    <div class="fid" hidden>
       <p class="fid-t" id="fid-course"></p>
       <p id="fid-term"></p>
       <p id="fid-author" hidden></p>
@@ -387,10 +387,10 @@ table.tbl tr.sel{background:var(--wash)}
    비워 두면 그 줄은 나타나지 않습니다.
    ════════════════════════════════════════════════════════ */
 const SITE={
-  course:"선형과 비선형 회귀분석 프로그램",
+  course:"",
   term:"",
-  author:"황준",
-  studentId:"2229432",
+  author:"",
+  studentId:"",
   repo:""         // 비워 두면 GitHub Pages 주소에서 자동으로 채워집니다
 };
 
