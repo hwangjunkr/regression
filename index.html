@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>선형과 비선형 회귀분석</title>
-<meta name="description" content="최소제곱법과 경사하강법, 다항식·지수·로지스틱·신경망 회귀를 공개 데이터로 직접 돌려 보고 과적합을 판정하는 웹 도구입니다.">
+<title>선형과 비선형 회귀분석 프로그램</title>
+<meta name="description" content="최소제곱법과 경사하강법, 다항식·지수·로지스틱·신경망 회귀를 공개 데이터로 직접 돌려 보고 과적합을 판정하는 프로그램입니다.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="선형과 비선형 회귀분석">
+<meta property="og:title" content="선형과 비선형 회귀분석 프로그램">
 <meta property="og:description" content="최소제곱법과 경사하강법, 다항식·지수·로지스틱·신경망 회귀를 공개 데이터로 비교합니다.">
 <meta name="theme-color" content="#F2F4F3" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0D161C" media="(prefers-color-scheme: dark)">
@@ -387,8 +387,8 @@ table.tbl tr.sel{background:var(--wash)}
    비워 두면 그 줄은 나타나지 않습니다.
    ════════════════════════════════════════════════════════ */
 const SITE={
-  course:"데이터처리개론 과제",
-  term:"2026년 2학기",
+  course:"선형과 비선형 회귀분석 프로그램",
+  term:"",
   author:"황준",
   studentId:"2229432",
   repo:""         // 비워 두면 GitHub Pages 주소에서 자동으로 채워집니다
@@ -1244,7 +1244,7 @@ window.addEventListener("resize",()=>{clearTimeout(rt);
   el.srclist.innerHTML=DATASETS.map(d=>`<li><b>${esc(d.label)}</b>${esc(d.src)}</li>`).join("");
   // 제출 정보
   $("fid-course").textContent=SITE.course||"";
-  $("fid-term").textContent=SITE.term||"";
+  $("fid-term").textContent=SITE.term||"";$("fid-term").hidden=!SITE.term;
   if(SITE.author){$("fid-author").textContent=SITE.author+(SITE.studentId?` (${SITE.studentId})`:"");$("fid-author").hidden=false;}
   // 저장소 주소를 비워 두면, GitHub Pages 주소(아이디.github.io/저장소)에서 거꾸로 알아낸다
   if(!SITE.repo&&/\.github\.io$/i.test(location.hostname)){
