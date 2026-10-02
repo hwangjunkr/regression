@@ -55,8 +55,3 @@ shot-*.png, cover.png        화면 이미지 (README와 노션 표지용)
 
 파이썬 버전 실행: `pip install numpy matplotlib` 후 `python linear_regression.py` (CSV를 쓰려면 파일 경로를 뒤에 붙입니다).
 
-## 참고
-
-- 김정환, 데이터처리개론 강의자료 2~4장, 동아대학교 조선해양공학과, 2026.
-- Bates, D. M. and Watts, D. G. (1988). *Nonlinear Regression Analysis and Its Applications*. Wiley.
-- 코드 작성과 검증에 Anthropic의 Claude를 활용했습니다.
