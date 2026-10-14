@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>인공신경망 프로그램</title>
+<meta name="description" content="뉴런 하나의 계산부터 오차로 배우는 과정, 활성화 함수, 실측 데이터로 학습하는 신경망, 이미지가 숫자가 되는 과정까지 직접 조작해 보는 프로그램입니다.">
+<meta property="og:title" content="인공신경망 프로그램">
+<meta property="og:description" content="뉴런의 계산과 학습 과정을 직접 조작해 봅니다.">
+<meta name="theme-color" content="#F2F4F3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0D161C" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2314202A'/%3E%3Cg stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M8 9L16 16M8 16L16 16M8 23L16 16' stroke='%234FBDD4'/%3E%3Cpath d='M16 16L24 16' stroke='%23E2443B'/%3E%3C/g%3E%3Cg fill='%23F2F4F3'%3E%3Ccircle cx='8' cy='9' r='2.4'/%3E%3Ccircle cx='8' cy='16' r='2.4'/%3E%3Ccircle cx='8' cy='23' r='2.4'/%3E%3Ccircle cx='16' cy='16' r='3'/%3E%3Ccircle cx='24' cy='16' r='2.4'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F2F4F3;--sunk:#E8ECEB;--raise:#FFFFFF;--ink:#14202A;--soft:#5A6B76;--faint:#8B9AA3;
+  --rule:#C6CFD1;--fine:#DDE3E3;--fit:#D62828;--neg:#C2187E;--pos:#0E6A7D;--wash:#DCE9EC;
+  --warn:#A8410E;--warnbg:#F8EADF;--good:#2F6B3A;--focus:#0E6A7D;
+  --ease:cubic-bezier(.4,0,.2,1);--t1:.18s;--t2:.32s;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0D161C;--sunk:#131F27;--raise:#16242D;--ink:#E4EBED;--soft:#93A5AE;--faint:#64757F;
+  --rule:#2C3D47;--fine:#1D2A32;--fit:#FF5A4D;--neg:#F062B4;--pos:#4FBDD4;--wash:#17303A;
+  --warn:#E89055;--warnbg:#2A1C13;--good:#7FBF8A;--focus:#4FBDD4;}}
+:root[data-theme="dark"]{
+  --paper:#0D161C;--sunk:#131F27;--raise:#16242D;--ink:#E4EBED;--soft:#93A5AE;--faint:#64757F;
+  --rule:#2C3D47;--fine:#1D2A32;--fit:#FF5A4D;--neg:#F062B4;--pos:#4FBDD4;--wash:#17303A;
+  --warn:#E89055;--warnbg:#2A1C13;--good:#7FBF8A;--focus:#4FBDD4;}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans KR","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.num{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+/* 머리 */
+.top{position:sticky;top:0;z-index:20;background:var(--paper);border-bottom:1px solid var(--ink);padding:calc(10px + env(safe-area-inset-top,0px)) 18px 0}
+.embed .top{position:static}
+.topin{max-width:1180px;margin:0 auto;display:flex;align-items:flex-end;justify-content:space-between;gap:10px 18px;flex-wrap:wrap}
+.brand{padding-bottom:10px;min-width:0}
+.brand h1{margin:0;font-size:1.12rem;font-weight:600;letter-spacing:-.015em}
+.site{display:flex;align-items:baseline;gap:16px}
+.site a{font-size:1.12rem;color:var(--soft);text-decoration:none;white-space:nowrap;transition:color var(--t1) var(--ease)}
+.site a:hover{color:var(--ink)}
+.site a:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:2px}
+.brand p{margin:0;font-size:.78rem;color:var(--soft)}
+.nav{position:relative;display:flex;overflow-x:auto;scrollbar-width:none;margin-bottom:-1px;max-width:100%}
+.nav::-webkit-scrollbar{display:none}
+.nav button{appearance:none;background:none;border:0;font:inherit;font-size:.88rem;color:var(--soft);padding:8px 12px 11px;min-height:44px;cursor:pointer;white-space:nowrap;transition:color var(--t1) var(--ease)}
+.nav button b{font-family:"IBM Plex Mono",monospace;font-weight:500;color:var(--faint);margin-right:5px;font-size:.8rem}
+.nav button[aria-selected="true"]{color:var(--ink);font-weight:600}
+.nav button[aria-selected="true"] b{color:var(--fit)}
+.nav button:focus-visible{outline:2px solid var(--focus);outline-offset:-3px}
+.nind{position:absolute;bottom:0;left:0;height:2px;width:0;background:var(--fit);transition:transform var(--t2) var(--ease),width var(--t2) var(--ease)}
+/* 배치 */
+.page{max-width:1180px;margin:0 auto;padding:0 18px}
+.sec[hidden]{display:none}
+.lead{margin:18px 0 0;max-width:46em;color:var(--soft);font-size:.9rem}
+.grid{display:grid;grid-template-columns:1fr;grid-template-areas:"stage" "rail";gap:0}
+.rail{grid-area:rail}.stage{grid-area:stage;min-width:0}
+@media (min-width:900px){.grid{grid-template-columns:300px minmax(0,1fr);grid-template-areas:"rail stage";column-gap:30px;align-items:start}
+  .rail{position:sticky;top:84px;padding-top:18px}.embed .rail{top:12px}.stage{padding-top:18px}}
+@media (max-width:899px){.rail{margin-top:20px;border-top:1px solid var(--ink);padding-top:16px}.stage{padding-top:14px}}
+.card{background:var(--raise);border:1px solid var(--fine);border-radius:5px;padding:14px 15px;margin-bottom:13px}
+.card h2{margin:0 0 3px;font-size:.84rem;font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card .hint{margin:0 0 9px;font-size:.76rem;color:var(--soft);line-height:1.5}
+.tag{font-size:.68rem;font-weight:500;color:var(--pos);background:var(--wash);padding:2px 7px;border-radius:9px;white-space:nowrap}
+/* 조절 */
+.knob{display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 8px;margin-top:8px}
+.knob label{font-size:.8rem;color:var(--soft)}
+.knob output{font-size:.8rem;font-weight:500}
+.knob input[type=range]{grid-column:1/-1;width:100%;accent-color:var(--pos);height:24px;margin:0}
+select,input[type=number]{background:var(--sunk);color:var(--ink);border:1px solid var(--rule);border-radius:4px;font:inherit;font-size:.86rem;min-height:38px;padding:6px 9px;width:100%}
+select:focus,input:focus{outline:none;border-color:var(--focus);box-shadow:0 0 0 2px color-mix(in srgb,var(--focus) 25%,transparent)}
+.row{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.btn{appearance:none;background:var(--raise);color:var(--ink);border:1px solid var(--rule);border-radius:4px;font:inherit;font-size:.8rem;padding:0 12px;min-height:38px;cursor:pointer;transition:background var(--t1) var(--ease),border-color var(--t1) var(--ease)}
+.btn:hover{border-color:var(--ink);background:var(--sunk)}
+.btn:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+.btn.main{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.btn.main:hover{opacity:.88}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.checks{display:flex;flex-wrap:wrap;gap:6px}
+.checks label{display:inline-flex;align-items:center;gap:5px;font-size:.8rem;border:1px solid var(--rule);border-radius:4px;padding:5px 9px;cursor:pointer;background:var(--raise)}
+.checks input{accent-color:var(--pos);margin:0}
+.checks label:has(input:checked){border-color:var(--pos);background:var(--wash)}
+/* 판독 */
+.readout{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:1px;background:var(--fine);border:1px solid var(--fine);border-radius:4px;overflow:hidden;margin-bottom:12px}
+.ro{background:var(--raise);padding:9px 11px}
+.ro dt{margin:0;font-size:.7rem;color:var(--soft)}
+.ro dd{margin:2px 0 0;font-size:1.02rem;font-weight:500}
+.ro.hl dd{color:var(--fit)}
+.formula{background:var(--raise);border:1px solid var(--fine);border-left:3px solid var(--pos);border-radius:0 4px 4px 0;padding:10px 13px;font-size:.84rem;line-height:1.75;margin:12px 0;overflow-x:auto;white-space:nowrap}
+.formula .k{color:var(--soft);font-family:"IBM Plex Sans KR",sans-serif}
+.plot{margin:4px 0}
+.plot svg{display:block;width:100%;height:auto}
+.note{color:var(--soft);font-size:.79rem;margin:8px 0 0;border-left:2px solid var(--rule);padding-left:10px;line-height:1.55}
+.alert{margin:10px 0 0;padding:10px 13px;background:var(--warnbg);border-left:3px solid var(--warn);border-radius:0 4px 4px 0;font-size:.82rem;line-height:1.55}
+.alert[hidden]{display:none}
+.sub{font-size:.86rem;font-weight:600;margin:20px 0 6px}
+table.tbl{width:100%;border-collapse:collapse;font-size:.82rem}
+table.tbl th{text-align:right;font-weight:500;color:var(--soft);padding:6px 8px;border-bottom:1px solid var(--rule);font-size:.74rem}
+table.tbl th:first-child,table.tbl td:first-child{text-align:left}
+table.tbl td{padding:6px 8px;border-bottom:1px solid var(--fine);text-align:right}
+.scroll{overflow-x:auto}
+/* 이미지 */
+.imgwrap{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:700px){.imgwrap{grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);align-items:start}}
+.pad{display:grid;grid-template-columns:repeat(14,1fr);border:1px solid var(--ink);background:#fff;touch-action:none;aspect-ratio:1;user-select:none;cursor:crosshair}
+.pad i{display:block;border-right:1px solid #eef1f1;border-bottom:1px solid #eef1f1}
+.mat{display:grid;grid-template-columns:repeat(14,1fr);border-left:2px solid var(--ink);border-right:2px solid var(--ink);padding:2px 4px;font-size:clamp(.5rem,1.6vw,.72rem);font-family:"IBM Plex Mono",monospace;text-align:center;line-height:1.85}
+.mat span{color:var(--faint)}
+.mat span.on{color:var(--ink);font-weight:600}
+footer{margin-top:34px;border-top:1px solid var(--ink);background:var(--sunk);padding:24px 18px calc(28px + env(safe-area-inset-bottom,0px))}
+.footin{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:1fr;gap:18px;font-size:.77rem;color:var(--soft);line-height:1.65}
+@media (min-width:900px){.footin{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:34px}}
+.footin p{margin:0 0 7px}.footin b{color:var(--ink);font-weight:600}
+@media (max-width:560px){
+  .readout{grid-template-columns:1fr 1fr}
+  .readout .ro:last-child:nth-child(odd){grid-column:1/-1}
+  .formula{white-space:normal;word-break:keep-all}
+}
+@keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.sec.show{animation:fadein var(--t2) var(--ease)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important}}
+</style>
+</head>
+<body>
+<header class="top"><div class="topin">
+  <div class="brand"><div class="site"><a href="./">회귀분석</a><h1>인공신경망</h1></div><p id="secsub"></p></div>
+  <nav class="nav" role="tablist" aria-label="단계" id="nav">
+    <button role="tab" data-sec="neuron" aria-selected="true"><b>1</b>뉴런</button>
+    <button role="tab" data-sec="learn" aria-selected="false"><b>2</b>오차로 배우기</button>
+    <button role="tab" data-sec="act" aria-selected="false"><b>3</b>활성화 함수</button>
+    <button role="tab" data-sec="net" aria-selected="false"><b>4</b>신경망 학습</button>
+    <button role="tab" data-sec="img" aria-selected="false"><b>5</b>이미지와 행렬</button>
+    <i class="nind" id="nind" aria-hidden="true"></i>
+  </nav>
+</div></header>
+<div class="page">
+<!-- 1 뉴런 -->
+<section class="sec" data-sec="neuron">
+ <p class="lead">뉴런 하나는 입력마다 가중치를 곱해 더하고, 편향을 더한 뒤, 활성화 함수에 넣어 출력을 냅니다. 값을 바꿔 가며 그 계산이 어떻게 달라지는지 보세요.</p>
+ <div class="grid">
+  <aside class="rail">
+   <div class="card"><h2>입력</h2><p class="hint">뉴런에 들어오는 값입니다.</p><div id="n-x"></div></div>
+   <div class="card"><h2>가중치와 편향</h2><p class="hint">가중치는 입력을 얼마나 중요하게 볼지, 편향은 출력이 켜지는 기준을 얼마나 옮길지 정합니다.</p><div id="n-w"></div></div>
+   <div class="card"><h2>활성화 함수</h2>
+    <label class="sr" for="n-act">활성화 함수</label>
+    <select id="n-act"><option value="none">없음 (합을 그대로 출력)</option><option value="step">계단 함수 (0 또는 1)</option><option value="sig" selected>시그모이드 (0과 1 사이)</option></select>
+   </div>
+  </aside>
+  <main class="stage">
+   <dl class="readout"><div class="ro"><dt>가중합 Σ</dt><dd class="num" id="n-sum">—</dd></div><div class="ro hl"><dt>출력 y</dt><dd class="num" id="n-y">—</dd></div></dl>
+   <div class="plot" id="n-diag"></div>
+   <div class="formula num" id="n-form"></div>
+   <div class="plot" id="n-actplot"></div>
+   <p class="note">선의 굵기는 가중치의 크기, 색은 부호입니다. 청록은 양수, 자홍은 음수입니다. 아래 그래프의 점은 지금 가중합이 활성화 함수의 어디에 놓였는지 보여줍니다.</p>
+  </main>
+ </div>
+</section>
+
+<!-- 2 오차로 배우기 -->
+<section class="sec" data-sec="learn" hidden>
+ <p class="lead">km를 마일로 바꾸는 계수를 모른다고 해 봅시다. 아무 값으로 시작해서, 정답과의 차이(오차)를 보고 계수를 조금씩 고치면 정답에 다가갑니다. 신경망이 배우는 방식이 이것입니다.</p>
+ <div class="grid">
+  <aside class="rail">
+   <div class="card"><h2>문제</h2><p class="hint">거리 km를 넣으면 정답 마일이 정해집니다. 1마일은 1.609344km이므로 정답 계수는 0.621371입니다.</p>
+    <label class="sr" for="l-km">km</label><input type="number" id="l-km" value="100" min="1" step="1" inputmode="decimal"></div>
+   <div class="card"><h2>직접 고쳐 보기</h2><p class="hint">오차를 보고 계수를 손으로 바꿔 보세요.</p>
+    <div class="row"><button class="btn" id="l-up" type="button">계수 0.1 올리기</button><button class="btn" id="l-dn" type="button">0.1 내리기</button></div></div>
+   <div class="card"><h2>규칙대로 배우기</h2><p class="hint">계수 ← 계수 + 학습률 × (오차 ÷ km)</p>
+    <div class="knob"><label for="l-rate">학습률</label><output class="num" id="l-rate-o">0.50</output><input type="range" id="l-rate" min="0.1" max="2.2" step="0.05" value="0.5"></div>
+    <div class="row"><button class="btn main" id="l-step" type="button">한 단계</button><button class="btn" id="l-ten" type="button">열 단계</button><button class="btn" id="l-reset" type="button">처음부터</button></div></div>
+  </aside>
+  <main class="stage">
+   <div class="plot" id="l-diag"></div>
+   <dl class="readout"><div class="ro"><dt>단계</dt><dd class="num" id="l-n">0</dd></div><div class="ro"><dt>계수</dt><dd class="num" id="l-c">—</dd></div><div class="ro"><dt>계산한 마일</dt><dd class="num" id="l-out">—</dd></div><div class="ro hl"><dt>오차</dt><dd class="num" id="l-err">—</dd></div></dl>
+   <div class="plot" id="l-plot"></div>
+   <p class="note" id="l-note"></p>
+   <h3 class="sub">기록</h3>
+   <div class="scroll"><table class="tbl" id="l-hist"></table></div>
+  </main>
+ </div>
+</section>
+
+<!-- 3 활성화 함수 -->
+<section class="sec" data-sec="act" hidden>
+ <p class="lead">뉴런은 모든 자극에 반응하지 않습니다. 어떤 기준을 넘을 때만 신호를 내보내는데, 이 역할을 하는 것이 활성화 함수입니다.</p>
+ <div class="grid">
+  <aside class="rail">
+   <div class="card"><h2>입력값</h2><p class="hint">함수에 넣을 값입니다.</p>
+    <div class="knob"><label for="a-x">입력</label><output class="num" id="a-x-o">0.0</output><input type="range" id="a-x" min="-6" max="6" step="0.1" value="0.8"></div></div>
+   <div class="card"><h2>계단 함수의 기준값</h2><p class="hint">입력이 이 값 이상이면 1, 아니면 0을 냅니다.</p>
+    <div class="knob"><label for="a-th">기준값</label><output class="num" id="a-th-o">0.0</output><input type="range" id="a-th" min="-3" max="3" step="0.1" value="1"></div></div>
+   <div class="card"><h2>기울기 보기</h2>
+    <div class="checks"><label><input type="checkbox" id="a-der" checked>시그모이드의 기울기 σ′(x)</label></div></div>
+  </aside>
+  <main class="stage">
+   <dl class="readout"><div class="ro"><dt>계단 함수 출력</dt><dd class="num" id="a-step">—</dd></div><div class="ro hl"><dt>시그모이드 σ(x)</dt><dd class="num" id="a-sig">—</dd></div><div class="ro"><dt>기울기 σ′(x)</dt><dd class="num" id="a-dsig">—</dd></div></dl>
+   <div class="plot" id="a-plot"></div>
+   <div class="formula num">σ(x) = 1 / (1 + e<sup>−x</sup>)&nbsp;&nbsp;&nbsp;σ′(x) = σ(x) · (1 − σ(x))</div>
+   <p class="note">계단 함수는 기준에서 갑자기 뛰고 나머지 구간에서는 기울기가 0이라, 오차를 보고 가중치를 조금씩 고치는 학습에 쓸 수 없습니다. 시그모이드는 같은 역할을 매끄럽게 하면서 어디서나 기울기가 있고, 그 기울기를 자기 자신으로 바로 계산할 수 있습니다. 기울기는 x = 0에서 가장 큰 0.25입니다.</p>
+   <h3 class="sub">왜 비선형 함수가 필요한가</h3>
+   <div class="row" style="margin-top:0"><div class="checks"><label><input type="radio" name="a-why" value="none">활성화 함수 없음</label><label><input type="radio" name="a-why" value="sig" checked>시그모이드</label></div><button class="btn" id="a-reroll" type="button">가중치 다시 뽑기</button></div>
+   <div class="plot" id="a-why"></div>
+   <p class="note" id="a-why-note"></p>
+  </main>
+ </div>
+</section>
+
+<!-- 4 신경망 학습 -->
+<section class="sec" data-sec="net" hidden>
+ <p class="lead">신체 치수 몇 가지로 몸무게를 추정하는 신경망을 실측 데이터 507명으로 학습시킵니다. 400여 명으로 배우고, 남겨 둔 100여 명으로 처음 보는 사람도 맞히는지 확인합니다.</p>
+ <div class="grid">
+  <aside class="rail">
+   <div class="card"><h2>입력 변수</h2><p class="hint">몸무게를 추정할 때 쓸 치수를 고르세요.</p><div class="checks" id="t-feats"></div></div>
+   <div class="card"><h2>신경망 구조</h2>
+    <div class="knob"><label for="t-h">은닉층 뉴런 수</label><output class="num" id="t-h-o">3</output><input type="range" id="t-h" min="1" max="8" step="1" value="3"></div>
+    <div class="knob"><label for="t-lr">학습률</label><output class="num" id="t-lr-o">0.30</output><input type="range" id="t-lr" min="0.05" max="1" step="0.05" value="0.3"></div></div>
+   <div class="card"><h2>학습</h2><p class="hint">한 번 반복할 때마다 학습용 데이터 전체로 오차를 계산해 가중치를 고칩니다.</p>
+    <div class="row"><button class="btn main" id="t-run" type="button">학습 시작</button><button class="btn" id="t-fast" type="button">3,000회 바로</button><button class="btn" id="t-reset" type="button">처음부터</button></div></div>
+   <div class="card"><h2>내 몸무게 추정</h2><p class="hint">치수를 넣으면 두 방법으로 몸무게를 추정합니다.</p><div id="t-pred"></div><div class="formula num" id="t-pred-out" style="margin-bottom:0">—</div></div>
+  </aside>
+  <main class="stage">
+   <dl class="readout"><div class="ro"><dt>반복 횟수</dt><dd class="num" id="t-ep">0</dd></div><div class="ro"><dt>학습 데이터 오차</dt><dd class="num" id="t-tr">—</dd></div><div class="ro hl"><dt>시험 데이터 오차</dt><dd class="num" id="t-te">—</dd></div><div class="ro"><dt>선형회귀 시험 오차</dt><dd class="num" id="t-lin">—</dd></div></dl>
+   <div class="plot" id="t-diag"></div>
+   <p class="note" id="t-count"></p>
+   <h3 class="sub">학습 곡선</h3>
+   <div class="plot" id="t-loss"></div>
+   <h3 class="sub">시험 데이터: 실제 몸무게와 추정값</h3>
+   <div class="plot" id="t-scatter"></div>
+   <h3 class="sub">선형회귀와 비교</h3>
+   <div class="scroll"><table class="tbl" id="t-cmp"></table></div>
+   <div class="alert" id="t-alert" hidden></div>
+  </main>
+ </div>
+</section>
+
+<!-- 5 이미지와 행렬 -->
+<section class="sec" data-sec="img" hidden>
+ <p class="lead">흑백 이미지는 칸마다 진하기를 0에서 1 사이 숫자로 적은 행렬입니다. 왼쪽 칸에 숫자를 그리면 오른쪽에 신경망이 실제로 받는 숫자가 나타납니다.</p>
+ <div class="grid">
+  <aside class="rail">
+   <div class="card"><h2>그리기</h2><p class="hint">마우스나 손가락으로 칸을 칠합니다. 가운데는 1, 주변 칸은 옅게 칠해집니다.</p>
+    <div class="row"><button class="btn" id="i-clear" type="button">지우기</button><button class="btn" id="i-one" type="button">예시: 숫자 1</button></div></div>
+   <div class="card"><h2>입력층 크기</h2><p class="hint">이 이미지를 신경망에 넣을 때 필요한 가중치 수입니다.</p>
+    <div class="knob"><label for="i-h">은닉층 뉴런 수</label><output class="num" id="i-h-o">16</output><input type="range" id="i-h" min="1" max="64" step="1" value="16"></div>
+    <div class="formula num" id="i-count" style="margin-bottom:0"></div></div>
+  </aside>
+  <main class="stage">
+   <dl class="readout"><div class="ro"><dt>전체 칸</dt><dd class="num">14 × 14 = 196</dd></div><div class="ro hl"><dt>칠한 칸</dt><dd class="num" id="i-on">0</dd></div><div class="ro"><dt>진하기 합</dt><dd class="num" id="i-sum">0.0</dd></div></dl>
+   <div class="imgwrap"><div class="pad" id="pad" aria-label="그리기 칸"></div><div class="mat" id="mat" aria-label="숫자 행렬"></div></div>
+   <p class="note">행렬을 한 줄로 펼치면 196개의 숫자가 되고, 이것이 입력층 뉴런 196개에 하나씩 들어갑니다. 입력 3개에 은닉 뉴런 3개면 가중치가 9개였듯, 입력 196개에 은닉 뉴런 16개면 가중치만 3,136개가 됩니다.</p>
+  </main>
+ </div>
+</section>
+</div>
+<footer><div class="footin">
+ <div><p><b>계산 방식.</b> 신경망 학습은 은닉층에 시그모이드, 출력층에 항등 함수를 쓰고, 역전파로 구한 기울기로 학습용 데이터 전체를 한 번에 보며 가중치를 고칩니다. 입력과 출력은 학습용 데이터의 평균과 표준편차로 표준화합니다. 가중치의 처음 값은 고정된 난수 씨앗으로 뽑아, 같은 설정이면 언제나 같은 결과가 나옵니다.</p>
+ <p>계산은 전부 이 브라우저 안에서 끝납니다.</p></div>
+ <div><p><b>신체 치수 데이터.</b> Heinz, G., Peterson, L. J., Johnson, R. W. and Kerk, C. J. (2003). Exploring Relationships in Body Dimensions. <i>Journal of Statistics Education</i> 11(2). 활동적인 성인 507명(남 247, 여 260)의 실측값이며, Rdatasets의 openintro::bdims에서 받았습니다. 허리 둘레는 갈비뼈 아래 가장 가는 부분을 잰 값입니다.</p></div>
+</div></footer>
+<script>
+const BODY={"feat":[{"id":"hgt","name":"키","unit":"cm","v":"174,175.3,193.5,186.5,187.2,181.5,184,184.5,175,184,180,177.8,192,176,174,184,192.7,171.5,173,176,176,180.5,172.7,176,173.5,178,180.3,180.3,164.5,173,183.5,175.5,188,189.2,172.8,170,182,170,177.8,184.2,186.7,171.4,172.7,175.3,180.3,182.9,188,177.2,172.1,167,169.5,174,172.7,182.2,164.1,163,171.5,184.2,174,174,177,186,167,171.8,182,167,177.8,164.5,192,175.5,171.2,181.6,167.4,181.1,177,174.5,177.5,170.5,182.4,197.1,180.1,175.5,180.6,184.4,175.5,180.6,177,177.1,181.6,176.5,175,174,165.1,177,192,176.5,169.4,182.1,179.8,175.3,184.9,177.3,167.4,178.1,168.9,157.2,180.3,170.2,177.8,172.7,165.1,186.7,165.1,174,175.3,185.4,177.8,180.3,180.3,177.8,177.8,177.8,177.8,177.8,163.8,188,198.1,175.3,166.4,190.5,166.4,177.8,179.7,172.7,190.5,185.4,168.9,167.6,175.3,170.2,190.5,177.8,190.5,177.8,184.2,176.5,177.8,180.3,171.4,172.7,172.7,177.8,177.8,182.9,170.2,167.6,175.3,165.1,185.4,181.6,172.7,190.5,179.1,175.3,170.2,193,171.4,177.8,177.8,167.6,167.6,180.3,182.9,176.5,186.7,188,188,177.8,174,177.8,171.4,185.4,185.4,188,188,182.9,176.5,175.3,175.3,188,188,175.3,170.5,179.1,177.8,175.3,182.9,170.8,188,180.3,177.8,185.4,168.9,185.4,180.3,174,167.6,182.9,160,180.3,167.6,186.7,175.3,175.3,175.9,175.3,179.1,181.6,177.8,182.9,177.8,184.2,179.1,176.5,188,174,167.6,170.2,167.6,188,174,176.5,180.3,167.6,188,180.3,167.6,183,183,179.1,170.2,177.8,179.1,190.5,177.8,180.3,180.3,161.2,167.5,159.5,157,155.8,170,159.1,166,176.2,160.2,172.5,170.9,172.9,153.4,160,147.2,168.2,175,157,167.6,159.5,175,166.8,176.5,170.2,174,173,179.9,170.5,160,154.4,162,176.5,160,152,162.1,170,160.2,161.3,166.4,168.9,163.8,167.6,160,161.3,167.6,165.1,160,170,157.5,167.6,160.7,163.2,152.4,157.5,168.3,180.3,165.5,165,164.5,156,160,163,165.7,161,162,166,174,172.7,167.6,151.1,164.5,163.5,152,169,164,161.2,155,170,176.2,170,162.5,170.3,164.1,169.5,163.2,154.5,159.8,173.2,170,161.4,169,166.2,159.4,162.5,159,162.8,159,179.8,162.9,161,151.1,168.2,168.9,173.2,171.8,178,164.3,163,168.5,166.8,172.7,163.5,169.4,167.8,159.5,167.6,161.2,160,163.2,162.2,161.3,149.5,157.5,163.2,172.7,155,156.5,164,160.9,162.8,167,160,160,168.9,158.2,156,160,167.1,158,167.6,156,162.1,173.4,159.8,170.5,159.2,157.5,161.3,162.6,160,168.9,165.1,162.6,165.1,166.4,160,152.4,170.2,162.6,170.2,158.8,172.7,167.6,162.6,167.6,156.2,175.2,172.1,162.6,160,165.1,182.9,166.4,165.1,177.8,165.1,175.3,154.9,158.8,172.7,168.9,161.3,167.6,165.1,175.3,157.5,163.8,167.6,165.1,165.1,168.9,162.6,164.5,176.5,168.9,175.3,159.4,160,170.2,162.6,167.6,162.6,160.7,160,157.5,162.6,152.4,170.2,165.1,172.7,165.1,170.2,170.2,170.2,161.3,167.6,167.6,165.1,162.6,152.4,168.9,170.2,175.2,175.2,160,165.1,174,170.2,160,167.6,167.6,167.6,154.9,162.6,175.3,171.4,157.5,165.1,160,174,162.6,174,162.6,161.3,156.2,149.9,169.5,160,175.3,169.5,160,172.7,162.6,157.5,176.5,164.4,160.7,174,163.8"},{"id":"wai_gi","name":"허리","unit":"cm","v":"71.5,79,83.2,77.8,80,82.5,82,76.8,68.5,77.5,81.9,82.6,85,85.6,78,82,88.3,73.6,78.5,87.3,92,80,74.5,90.6,81.4,89.5,85,73.5,75.8,74,77.5,74,74,82,73,70.5,75,72.1,78.8,77.5,91.5,84.9,79.1,77.9,91.7,86.6,84.7,90.3,79.7,73.1,79.8,81.6,76.8,85.9,73.3,69.9,72.7,82.7,90.1,82.9,77.9,92.5,77.8,72.7,75,76,82.7,80,107.1,76.2,90.2,89.4,80.9,73.5,70.9,76.1,81,72,76.8,86,98.5,79,77.5,75.2,82,79.6,75.2,88.6,81.5,79.9,73.5,80.3,81.5,74,104,76.2,76.5,81,88.8,94,83.4,77,75.4,80.3,68,80.6,88.6,81.1,70.8,73.3,75.9,86.2,75,101,90,75,75.9,96,84,67.1,82.5,83.7,76.7,105.2,90.6,85.7,82.5,94.7,105.2,86,90.9,92.4,96.5,98.4,76.7,94.8,80.1,97.4,73.7,76.1,95.6,101,84.5,98,101.6,87.8,80,81.8,84.4,85,90,72.9,81,86.5,93.9,77,75,80.6,100.5,81.2,103.4,90.3,98,86.5,77.9,89.1,93.9,85.3,98.5,79.5,94.9,76.5,88.4,84.2,87.6,83.7,92.1,89.9,88.7,83.9,79.5,84.5,89.2,90.7,88.8,103.6,98.5,82.9,90.5,84.5,86,84.2,85.7,112.1,99.7,84.7,80.3,98.6,90,86.6,80.2,109.2,88.4,81,88.8,78.1,81.5,87.6,92.5,97,82,99.5,93.8,79.1,85.8,90.8,85.4,91.6,79.7,86.1,113.2,79.5,85.4,97.9,94.7,86.1,84.9,92.2,83.7,97.8,98.6,89.5,82.9,90.1,78.9,80.7,94.3,70.2,83.6,91.9,71.8,85,85.7,96.5,82.4,86.3,83.2,66.5,61.5,61.2,78,70.5,66.5,58,74.5,73.5,90.5,66.5,61,69.5,62,63.4,71,59,74,60.5,75,65,82.2,70.2,85,75,63,70,72.6,78.7,61,64.2,63.1,85,66,65,63.2,83.6,68,75.7,65.5,66.9,67.9,67.8,63.2,73.1,65.3,65.6,62.7,81.8,72.1,68.6,80,64.9,61.7,64,58.6,68.3,69.5,70.5,69.8,69,81,71,73.6,96.3,65,62.8,83,67.6,65.4,61.6,63.2,59.4,62.7,66.6,64.6,65.7,63,78.5,68.2,68.5,68.8,69,78,62,65.8,65,64.9,71.5,61.4,75.4,67.2,69.5,57.9,64.4,62.3,68.7,68,66,71.2,64.8,78,60.7,75,68.6,67.1,68,71,76,70.3,69.5,101.5,67.2,68.7,66,67.5,65.2,64.2,61,60.2,62.6,72.7,58.5,67.5,66.1,68,64,90.1,64.1,72.4,71,69.1,66.1,59.5,71.5,65,71.5,63,70,70.4,64.3,66,70.5,62,67.6,65,64,70.5,79.2,71.1,74.7,62.9,70.6,61.6,74.2,65.5,67.7,72.9,72.1,93.4,60.7,69.2,75.5,85.6,71.6,75.5,73.7,67.9,71.2,69.3,75.6,63.8,83.6,84.9,66,68.3,63.8,73.6,76.3,58.8,78,64.5,65.8,62.5,77.5,70,59.4,68.3,77.9,68.3,72,62.7,58,72.7,85.4,67.3,70.8,67.4,66,63.6,71.7,73.6,66.9,65.5,70.4,80.3,65,60.4,75.3,83.4,72.2,70.1,69.8,66.4,61.7,76.4,63.8,70.2,88.2,75.8,81.5,67.4,78.3,65.9,62.4,65.6,96.2,62.5,80.5,86.1,71.3,79.4,72.3,67.4,94.2,67,69.5,66.4,67.6,66.6,69.7,72,64.5,72.3,69.1,74.7,60.8,66.9,68.8,63.7,71.2,79.6,77.9,69.6,86,69.9,63.5,57.9,72.2,80.4"},{"id":"che_gi","name":"가슴","unit":"cm","v":"89.5,97,97.5,97,97.5,99.9,106.9,102.5,91,93.5,97.7,99.5,103,99.6,101.5,104.1,100,93.8,98.5,104,100,100,99,101,101.6,108.8,100,88,88.7,84.5,93.6,105,90.9,91.2,98.4,85,97.2,91.5,91.2,101.1,104.3,110.8,96.3,102.7,103.9,105.6,95.8,111.2,100,91.6,108,109.6,105.7,109.1,88.8,86.1,91.3,100.6,105.5,97.5,94.4,99.6,98.1,93.6,93.4,92,99.2,97.6,108.8,91.9,105.2,98.3,92.5,92.5,101.6,94.6,92.5,88.2,91,106,115,100,94.7,92.5,96.7,97.4,106.7,106.2,103.6,98.3,87.8,99.8,104.6,86.5,110,93.2,90,98.4,107.2,108.3,105.7,88.5,79.3,90.9,90.2,91.6,105.2,97,85.3,99.6,94.3,111.8,94.3,106.1,102,94.8,102.9,115.8,105.4,87.1,104.1,95.8,98.6,118.7,100.9,98.5,96.9,110.7,108,109,104.2,100.5,105.7,112.4,96.2,97.5,90.9,108.4,94.3,109.1,115,104.4,100.1,108.4,107.3,101.8,94.5,91.7,95.9,110.5,104,86.8,106.7,102.5,103,95,99,89.7,111.5,94.1,118.3,106.5,110.4,102.3,98.5,111.6,106.7,110.4,114,101.8,109.6,100.7,104.3,104.2,107.4,101,103,107.2,99,100.3,100.2,99.8,107.5,110.1,107,105.6,103.6,97.1,109.8,103.3,103.7,108.5,97.8,112.7,111.4,95.1,100.2,106.3,109.5,106.3,91.5,104.9,109.6,102.5,101.2,98.7,96,104.2,103,107,101,112.1,103.4,100.3,95.7,108,101,98.6,101.6,99,116.7,105,95.1,106.7,116.6,103.5,90.4,107.5,100.8,104.2,104.9,112.8,95.7,104.9,109.1,105.4,104.3,100.5,111.8,109.5,101.2,103.3,101.6,103.1,104.6,104.3,95.9,83,78.5,75,86.5,91,79.5,77,88,85,98.8,79,77.6,85,76.7,76.7,82,79,89.5,73.5,90,80,94.5,83.8,95.2,91,80,81.7,89.6,90.9,78.5,78,80.2,99,80,75.5,82.6,94.5,83.9,92.8,85.3,84.4,87.6,81,84.1,88.2,88.1,84.9,81.2,91.6,88.4,87.6,91.3,87.2,82.2,82.1,82.6,86.5,85.3,84.7,86.8,85.2,93.9,84.5,90.7,97.4,83.3,82.1,92.2,83.6,82.6,77,79.3,84.3,85.6,85,79.1,85,79,96.2,86,89.8,84.5,88.2,99.5,76.1,85.8,82,77.5,85.7,78.8,88,80.2,85.6,81.3,84.6,82.2,84.9,81.5,89.9,89.8,80.8,88.4,80.2,89.5,83.7,82.5,85.5,88.3,91.5,92.2,80.5,108,80,89.5,84.9,80.8,81,88.7,74.5,81.9,75.8,88,72.6,88,86,85.5,80.4,98.1,82,89,85.8,85.9,82.5,74.5,89.4,80.3,85.6,83,88.2,85.5,80.6,81,83.6,79.4,82.9,83.2,78.1,82.4,90,92.4,86.7,84,86,84.5,91.2,81.1,87.6,88.2,88.2,104.2,84.8,84.3,91,90.5,89.6,89.3,90,88.2,83.5,91,88.2,82.2,98.9,97.9,81.7,86.1,87.1,76.8,87.9,81.6,92.3,81.3,82.2,78.6,94.3,89.5,81,85.4,86.2,85.3,86.1,84.5,72.6,90,95.8,85.5,85.7,85.4,79.1,84.4,90,82.9,87.3,85.3,87.3,93.2,84.7,78,90.7,95,88.7,86.6,82.5,81.4,79.9,91.1,80.1,86.4,105.2,91.1,96.7,80.5,90.4,84.1,84.2,82.5,106.9,79.9,93,96.3,86.8,95.3,93,86.4,109,86.2,85.3,84.2,83.7,86.5,98.2,88,80.4,86,86.4,87.6,80.9,82.1,89.3,85.3,89,94.1,90.8,97,95.4,91.8,87.3,78.1,90.9,97.1"},{"id":"hip_gi","name":"엉덩이","unit":"cm","v":"93.5,94.8,95,94,98.5,95.3,101,98,89.5,99.8,98.4,95,103,98,95,97,105,90.1,94.5,101.1,98,99.5,92.2,101.2,98.8,106,105,97,89,93.5,95,90,96.4,100,95.4,90,91.3,91,93.2,97,103.9,102.6,97.1,90.7,101.8,103.9,101.4,108.7,98.4,86.5,94.8,100.9,98,100.9,85.7,84.1,91.4,98,104.5,95.8,91.7,103.4,90,91.7,94,93,93,97.4,108.3,90,100.2,97.7,96,92,95.3,86.3,92.5,85.5,94.5,103,116.5,98.5,92,91.6,92.7,95,94.5,100.5,91.8,87.5,94.9,93,92,91.3,111.7,92.8,91.2,96.2,100,108.2,101.1,93,88.6,92.8,81.5,91.3,94.7,93.9,89.4,89.3,92.6,96.3,88,105.5,102.3,91.6,93.4,103.6,94.8,85.9,98.4,98.4,93.3,115.5,97.7,98.6,94.9,101.3,108.1,98,100.2,97,97.4,107.9,93.9,98.6,91.3,105.3,88.2,93.3,107.9,103.3,94.4,101.5,110,98.4,95,98.3,99,95.7,96,89.5,93.7,97,103.6,93,90,90,109.5,91.6,108.5,101.6,99.6,91.9,90.8,104.8,111.4,96.5,108.1,95.3,104.3,96.3,98.8,93.2,106.7,99.9,103.8,107.1,100,103.9,95.3,99.5,107,101.7,103.8,100.6,103.6,91.2,95.2,98.2,97.1,97.5,94.9,106.3,105.8,96.7,96.4,118.7,104.3,95.9,89.2,101.7,95.1,105,101.3,92,89.5,100.5,94,104.5,98,107.4,112.2,94.3,106.8,100.3,101.8,106.7,98.4,101.3,107.9,92.7,94.3,104.6,103.3,96.7,97.9,97.5,97.7,102.5,103.3,100.9,94.8,96.6,98.1,95.5,100.4,92,101.5,103.3,87.6,97.9,95.9,111.8,99.9,103.3,100.6,92,90.5,91,99.5,91.5,94,85.5,104,104.1,108.1,90.3,91.6,94.4,80.9,87.7,88.5,88.5,101,88.5,99,91,110.2,94.2,111,103,90,96,93.7,101.5,82.5,89,93.9,106.4,92,86,89.1,104.1,88,102.6,95.9,98.8,93.5,92.9,86.9,94.9,95.3,93.3,90,99.3,95.6,95.8,104.6,92.2,80.7,98.1,89.6,94,94.7,94.1,93.7,86.7,105.9,97.5,105.3,102.6,91.6,83.9,108.1,99.1,89.3,89.9,85.8,85.8,96,98.7,94.9,90.5,86.6,103,97.9,98.1,94.8,96.5,103,86.8,89.3,89.5,88.4,100.5,94,101.3,95.5,95.3,84.1,91,83.9,93.1,92.3,97.1,97.5,92,112.1,89.9,104.9,94.2,90.4,99.5,98.7,103.5,100,95.2,114,91.2,93.8,92,85.8,95.4,88.4,84.5,91.7,87.4,95.9,84.3,96.5,91.8,101,92.6,95.2,96,89.9,92.7,94.1,93.8,78.8,96,84.9,97.5,86,96.8,93.5,93,90.2,91.9,88.5,90.2,97.6,95,98,97.4,98.2,100,95.5,101.9,87.6,102.6,90.4,92,102.2,106.7,109.8,89.1,93,98.6,112.1,95,100.2,101.2,100.8,96.5,93.2,95.8,97.6,108.3,102.4,94.3,96.5,94,106.2,98.6,89.3,106.9,91.9,89.1,95.5,101.1,98.9,83.3,94,100.1,93.8,103.9,93.5,90.2,100.2,109.5,97.6,96.9,90.3,94.8,92.7,108.4,94.7,90.6,90.8,96.7,101.2,94.7,87,103.6,107.5,96.1,97.6,100.2,91.6,94.7,107,86.3,97.8,107.9,103.3,94.9,95.1,104.9,96.3,90.4,92.8,128.3,87.6,107.2,112,94,102.7,92,98.4,103.5,96.7,90.6,92,90.4,96.7,94.9,95.5,88.4,97.8,95.4,97.7,84.6,91.6,103.3,96.3,93.5,104.3,96.3,98.3,112.1,101,89.5,86.9,98.6,102.2"},{"id":"thi_gi","name":"허벅지","unit":"cm","v":"51.5,51.5,57.3,53,55.4,57.5,60.9,56,50,59.8,60.5,58.5,59,59.1,57,56,65.8,54.1,55,59.5,57.5,57,53.4,59.5,61.3,59.5,62,56.3,52.6,50.5,56.5,54.2,51.8,57.5,56.3,50,49.5,54.9,55.8,55,62,66.4,60.1,56.7,61,63.2,60,66.9,61.1,50.6,58.3,61.7,56.8,61.3,46.9,50.8,51.2,55.8,62.7,52.6,57.1,58.5,52.4,51.9,53.8,54.5,56.6,57.8,67,52,60.8,54.8,59,53.1,56,52.4,54.7,50.2,54.6,60.6,67.8,62.1,54.2,49.6,54.6,54.2,57.4,63.4,55,54.4,53.5,55.4,54.1,53.5,63.2,55.2,54.2,56,61,66.8,61.3,51.7,50,53.9,49.5,55,58.3,53.5,55.8,55.4,54.4,59.1,53.8,60.2,60,49.4,55,62.2,57.6,46.8,57.7,56.2,56,69.9,58,55.5,54.4,60.1,60.5,59.5,51.8,50.9,54.3,67.4,50.4,48.3,56.2,55.6,52.3,51.7,64.6,54.4,54.7,56.9,57.8,55.6,52,56.3,55,59,52.5,51,54.8,57,60.5,52,50.6,55.5,61.8,51.5,60.5,57.2,56.7,55,50.8,62.7,62.8,57,61.3,54.8,59,54.2,54.8,55,60.9,56.8,56.6,59.2,57.5,59.8,52.5,59.2,56.9,58,61,55.3,57.5,51.7,52.4,53.7,53.1,58.8,51.7,56.9,57.8,54.6,53.8,70,63.5,53.6,48.5,56.4,52.5,56,62.5,56.5,52,60.7,55,56.6,59,60.5,66.2,51,60.6,56.5,57,57.8,58.1,56,57.7,51.8,52.7,60.8,58,55.2,51.8,53.7,53.3,58,55.3,54.9,51.9,55,55.7,56.8,59.1,51.7,59.5,57.7,50.1,55.2,50.9,62.3,63.3,59.7,57.8,53.5,57.7,53,61.5,55,54,49.5,64,65.3,61.1,52,53,55.8,48.8,54,54.5,51.2,61.5,54,59,53.5,69,54.1,68,62,51.1,57.9,56.4,59.9,49.5,53,57.1,65.6,52.5,51,55.8,61.5,52.2,64.3,53.7,59.2,57,55.8,52.1,57.2,55.7,57.4,54,60.7,59.2,56.6,62.7,53.1,50.3,56.8,54.9,57,55.7,54.6,55.7,51.5,65.5,59.5,65.8,57.5,55.3,51.5,65,57.5,53.7,53.6,51.6,51,61.5,60.3,54,56.1,48.5,59.6,59.8,62,56.5,57.6,64.8,52.6,57.4,53.4,53.4,60.4,56.4,63.1,54.7,57.6,49,53.4,52.8,55.2,55.4,59,58.2,57.4,75.7,53.3,63.2,58,53.2,60.8,59.2,64.8,59.6,56.2,70,53.6,58,56.2,53.8,58.5,56,51.5,53.3,54,56.6,52.2,56.3,54.4,59.6,54.8,53.8,53.7,52.6,57.3,56.2,54.2,46.3,56.9,50.8,63,53,59.8,57.5,55.6,54.8,56.8,53.6,56.4,62.2,55.9,61.4,61.7,55.3,59.4,52.8,62,51.6,61.5,53.3,54.3,60.1,62,67.7,52.6,53.9,62.7,64.3,56.8,57.8,57.4,60.2,52.4,55.4,58.5,59,63,59.9,56.4,55.1,56.1,61.7,55.5,51.6,65.5,53.4,55.4,57.3,61.6,55,50.2,57.3,60.7,54.7,57.5,52.5,52.5,57.9,68.3,58.8,57.9,54.7,57.4,54.4,68.5,52.9,54.4,56.4,55.6,61.2,54.8,49.5,59.9,67.4,61.1,55.6,59,54.6,56.5,64.5,51.5,58.5,63.1,60.5,54.8,56.3,63.1,57,53.2,56.2,72.3,51.6,63,69.4,59.2,63,54.7,59.1,57.8,56.2,51.7,53.4,52.4,59.3,59.1,57.3,52.4,59.1,59.5,57,51,53.4,63,55.5,56.1,66.5,56.2,56.3,64.4,60.6,55.2,51.8,59,57.4"},{"id":"sex","name":"성별","unit":"남=1, 여=0","v":"1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"},{"id":"age","name":"나이","unit":"세","v":"21,23,28,23,22,21,26,27,23,21,23,22,20,26,23,22,30,22,29,22,22,20,22,24,26,24,21,24,23,19,23,25,23,23,23,20,22,24,22,24,21,23,24,35,29,25,23,20,25,29,23,23,36,25,24,20,52,50,46,51,28,48,35,23,23,62,21,26,33,36,41,40,27,27,23,31,26,23,24,24,34,21,25,34,31,40,21,33,25,29,27,44,26,22,37,38,20,21,24,45,25,22,29,37,20,20,32,23,25,27,21,27,25,38,44,27,37,28,33,25,21,30,26,27,33,29,27,34,42,29,41,43,43,29,27,62,33,45,30,20,22,51,34,44,46,34,32,28,31,29,42,29,31,30,27,25,24,33,45,37,44,34,55,43,24,22,38,24,29,25,37,30,26,35,29,30,37,34,28,27,32,28,22,44,25,49,54,49,60,42,52,23,33,46,43,56,21,18,21,45,22,55,42,29,40,24,62,26,35,37,34,25,30,32,27,42,44,46,19,43,28,39,30,36,48,48,53,45,39,43,65,45,37,55,33,25,35,28,26,43,30,26,51,30,24,35,37,22,20,19,25,21,23,26,22,28,40,32,25,25,29,22,25,23,37,19,23,25,26,24,29,22,30,23,38,23,19,46,20,22,25,21,23,31,29,19,21,23,24,20,19,20,19,20,19,22,39,18,19,26,20,20,26,21,21,38,23,37,19,25,20,41,26,21,47,19,44,35,32,46,22,49,52,25,48,41,18,30,20,24,23,30,23,45,20,20,23,21,28,45,24,25,19,20,29,24,24,25,31,22,20,32,25,19,23,22,20,27,34,25,26,19,26,25,20,21,18,19,27,26,36,20,28,32,32,23,20,20,20,23,20,28,23,19,28,19,29,32,20,28,36,22,20,22,32,40,40,42,40,44,30,28,37,40,45,35,41,27,20,24,36,27,32,64,21,32,35,41,40,29,40,24,23,41,44,53,19,24,25,20,34,32,24,29,31,34,36,32,39,37,52,24,33,42,34,37,39,41,36,19,22,23,36,45,25,67,26,21,33,25,24,21,35,27,27,26,25,44,29,26,23,32,32,43,32,41,33,28,28,25,38,37,25,37,27,27,20,19,32,26,56,23,19,31,34,34,24,22,34,30,32,40,29,21,33,33,38"}],"y":"65.6,71.8,80.7,72.6,78.8,74.8,86.4,78.4,62,81.6,76.6,83.6,90,74.6,71,79.6,93.8,70,72.4,85.9,78.8,77.8,66.2,86.4,81.8,89.6,82.8,76.4,63.2,60.9,74.8,70,72.4,84.1,69.1,59.5,67.2,61.3,68.6,80.1,87.8,84.7,73.4,72.1,82.6,88.7,84.1,94.1,74.9,59.1,75.6,86.2,75.3,87.1,55.2,57,61.4,76.8,86.8,72.2,71.6,84.8,68.2,66.1,72,64.6,74.8,70,101.6,63.2,79.1,78.9,67.7,66,68.2,63.9,72,56.8,74.5,90.9,93,80.9,72.7,68,70.9,72.5,72.5,83.4,75.5,73,70.2,73.4,70.5,68.9,102.3,68.4,65.9,75.7,84.5,87.7,86.4,73.2,53.9,72,55.5,58.4,83.2,72.7,64.1,72.3,65,86.4,65,88.6,84.1,66.8,75.5,93.2,82.7,58,79.5,78.6,71.8,116.4,72.2,83.6,85.5,90.9,85.9,89.1,75,77.7,86.4,90.9,73.6,76.4,69.1,84.5,64.5,69.1,108.6,86.4,80.9,87.7,94.5,80.2,72,71.4,72.7,84.1,76.8,63.6,80.9,80.9,85.5,68.6,67.7,66.4,102.3,70.5,95.9,84.1,87.3,71.8,65.9,95.9,91.4,81.8,96.8,69.1,82.7,75.5,79.5,73.6,91.8,84.1,85.9,81.8,82.5,80.5,70,81.8,84.1,90.5,91.4,89.1,85,69.1,73.6,80.5,82.7,86.4,67.7,92.7,93.6,70.9,75,93.2,93.2,77.7,61.4,94.1,75,83.6,85.5,73.9,66.8,87.3,72.3,88.6,75.5,101.4,91.1,67.3,77.7,81.8,75.5,84.5,76.6,85,102.5,77.3,71.8,87.9,94.3,70.9,64.5,77.3,72.3,87.3,80,82.3,73.6,74.1,85.9,73.2,76.3,65.9,90.9,89.1,62.3,82.7,79.1,98.2,84.1,83.2,83.2,51.6,59,49.2,63,53.6,59,47.6,69.8,66.8,75.2,55.2,54.2,62.5,42,50,49.8,49.2,73.2,47.8,68.8,50.6,82.5,57.2,87.8,72.8,54.5,59.8,67.3,67.8,47,46.2,55,83,54.4,45.8,53.6,73.2,52.1,67.9,56.6,62.3,58.5,54.5,50.2,60.3,58.3,56.2,50.2,72.9,59.8,61,69.1,55.9,46.5,54.3,54.8,60.7,60,62,60.3,52.7,74.3,62,73.1,80,54.7,53.2,75.7,61.1,55.7,48.7,52.3,50,59.3,62.5,55.7,54.8,45.9,70.6,67.2,69.4,58.2,64.8,71.6,52.8,59.8,49,50,69.2,55.9,63.4,58.2,58.6,45.7,52.2,48.6,57.8,55.6,66.8,59.4,53.6,73.2,53.4,69,58.4,56.2,70.6,59.8,72,65.2,56.6,105.2,51.8,63.4,59,47.6,63,55.2,45,54,50.2,60.2,44.8,58.8,56.4,62,49.2,67.2,53.8,54.4,58,59.8,54.8,43.2,60.5,46.4,64.4,48.8,62.2,55.5,57.8,54.6,59.2,52.7,53.2,64.5,51.8,56,63.6,63.2,59.5,56.8,64.1,50,72.3,55,55.9,60.4,69.1,84.5,55.9,55.5,69.5,76.4,61.4,65.9,58.6,66.8,56.6,58.6,55.9,59.1,81.8,70.7,56.8,60,58.2,72.7,54.1,49.1,75.9,55,57.3,55,65.5,65.5,48.6,58.6,63.6,55.2,62.7,56.6,53.9,63.2,73.6,62,63.6,53.2,53.4,55,70.5,54.5,54.5,55.9,59,63.6,54.5,47.3,67.7,80.9,70.5,60.9,63.6,54.5,59.1,70.5,52.7,62.7,86.3,66.4,67.3,63,73.6,62.3,57.7,55.4,104.1,55.5,77.3,80.5,64.5,72.3,61.4,58.2,81.8,63.6,53.4,54.5,53.6,60,73.6,61.4,55.5,63.6,60.9,60,46.8,57.3,64.1,63.6,67.3,75.5,68.2,61.4,76.8,71.8,55.5,48.6,66.4,67.3","n":507};
+"use strict";
+/* ═══════════ 공통 ═══════════ */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const f=(v,d=2)=>{if(!isFinite(v))return "—";const r=Math.abs(v)<Math.pow(10,-d)/2?0:v;return r.toFixed(d).replace(/^-/,"−");};
+const sig=z=>1/(1+Math.exp(-z));
+function lcg(seed){let s=(seed>>>0)||1;return()=>{s=(Math.imul(s,1103515245)+12345)&0x7fffffff;return s/0x7fffffff;};}
+function gauss(r){const u=Math.max(r(),1e-9),v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const REDUCED=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const css=n=>`var(--${n})`;
+function W(el){return Math.max(300,Math.round(el.clientWidth||640));}
+function nice(lo,hi,n){if(lo===hi){lo-=1;hi+=1;}const raw=(hi-lo)/n,m=Math.pow(10,Math.floor(Math.log10(raw))),k=raw/m;
+  const st=(k<1.5?1:k<3?2:k<7?5:10)*m,t=[];for(let v=Math.ceil(lo/st)*st;v<=hi+st*1e-9;v+=st)t.push(Math.abs(v)<st*1e-9?0:v);return {t,st};}
+function tl(v,st){if(v===0)return "0";const d=st<1?Math.min(4,Math.ceil(-Math.log10(st))):0;return v.toFixed(d).replace(/^-/,"−");}
+
+/* 범용 그래프: 선, 점, 표시점, 수평선 */
+function chart(el,o){
+  const w=W(el),h=o.h||Math.round(Math.min(360,Math.max(230,w*0.52)));
+  const L=48,R=14,T=12,B=40,iw=w-L-R,ih=h-T-B;
+  const [x0,x1]=o.xr,[y0,y1]=o.yr;
+  const X=v=>L+(v-x0)/(x1-x0)*iw,Y=v=>T+ih-(v-y0)/(y1-y0)*ih;
+  const xt=nice(x0,x1,w<420?4:6),yt=nice(y0,y1,5);let g="";
+  for(const t of xt.t){const p=X(t);g+=`<line x1="${p}" y1="${T}" x2="${p}" y2="${T+ih}" stroke="${css('fine')}"/><text x="${p}" y="${T+ih+17}" text-anchor="middle" font-size="12" fill="${css('soft')}" class="num">${tl(t,xt.st)}</text>`;}
+  for(const t of yt.t){const p=Y(t);g+=`<line x1="${L}" y1="${p}" x2="${L+iw}" y2="${p}" stroke="${css('fine')}"/><text x="${L-7}" y="${p+4}" text-anchor="end" font-size="12" fill="${css('soft')}" class="num">${tl(t,yt.st)}</text>`;}
+  g+=`<rect x="${L}" y="${T}" width="${iw}" height="${ih}" fill="none" stroke="${css('rule')}"/>`;
+  g+=`<clipPath id="c${el.id}"><rect x="${L}" y="${T}" width="${iw}" height="${ih}"/></clipPath><g clip-path="url(#c${el.id})">`;
+  for(const hl of (o.hlines||[]))g+=`<line x1="${L}" y1="${Y(hl.y)}" x2="${L+iw}" y2="${Y(hl.y)}" stroke="${hl.color}" stroke-width="1.4" stroke-dasharray="5 4"/>`;
+  for(const s of (o.series||[])){let d="";s.pts.forEach((p,i)=>{if(!isFinite(p[1]))return;d+=(d?"L":"M")+X(p[0]).toFixed(1)+" "+Y(p[1]).toFixed(1);});
+    g+=`<path d="${d}" fill="none" stroke="${s.color}" stroke-width="${s.w||2.2}" ${s.dash?`stroke-dasharray="${s.dash}"`:""} stroke-linejoin="round" ${s.op?`opacity="${s.op}"`:""}/>`;}
+  for(const ps of (o.points||[]))for(const p of ps.pts)g+=`<circle cx="${X(p[0]).toFixed(1)}" cy="${Y(p[1]).toFixed(1)}" r="${ps.r||3}" fill="${ps.fill||ps.color}" stroke="${ps.color}" stroke-width="${ps.sw||0}" opacity="${ps.op||1}"/>`;
+  g+=`</g>`;
+  for(const m of (o.marks||[])){const mx=X(m.x),my=Y(Math.max(y0,Math.min(y1,m.y)));
+    g+=`<circle cx="${mx}" cy="${my}" r="6" fill="${m.color}" stroke="${css('raise')}" stroke-width="2"/>`;}
+  for(const lg of (o.legend||[]).map((l,i)=>[l,i])){const L0=lg[0];const sym=L0.dot?`<circle cx="9" cy="-4" r="4" fill="${L0.hollow?"none":L0.color}" stroke="${L0.color}" stroke-width="1.4"/>`:`<line x1="0" y1="-4" x2="18" y2="-4" stroke="${L0.color}" stroke-width="2.4" ${L0.dash?`stroke-dasharray="${L0.dash}"`:""}/>`;
+    g+=`<g transform="translate(${L+10},${T+16+lg[1]*18})">${sym}<text x="24" y="0" font-size="12" fill="${css('ink')}">${esc(L0.t)}</text></g>`;}
+  g+=`<text x="${L+iw/2}" y="${h-4}" text-anchor="middle" font-size="12.5" fill="${css('soft')}">${esc(o.xl||"")}</text>`;
+  g+=`<text transform="translate(13 ${T+ih/2}) rotate(-90)" text-anchor="middle" font-size="12.5" fill="${css('soft')}">${esc(o.yl||"")}</text>`;
+  el.innerHTML=`<svg viewBox="0 0 ${w} ${h}" role="img" xmlns="http://www.w3.org/2000/svg">${g}</svg>`;
+}
+function knob(host,id,label,min,max,step,val,d){
+  const w=document.createElement("div");w.className="knob";
+  w.innerHTML=`<label for="${id}">${esc(label)}</label><output class="num" id="${id}-o">${f(val,d)}</output><input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${val}">`;
+  host.appendChild(w);return $(id);
+}
+const edgeColor=w=>w>=0?css('pos'):css('neg');
+
+/* ═══════════ 1. 뉴런 ═══════════ */
+const N={x:[1.0,0.5,-0.8],w:[0.8,-0.4,0.6],b:0.1,act:"sig"};
+const ACT={none:{n:"없음",f:z=>z},step:{n:"계단",f:z=>z>=0?1:0},sig:{n:"시그모이드",f:sig}};
+function nInit(){
+  N.x.forEach((v,i)=>{const s=knob($("n-x"),"nx"+i,`x${"₁₂₃"[i]}`,-2,2,0.1,v,1);s.addEventListener("input",()=>{N.x[i]=+s.value;$("nx"+i+"-o").textContent=f(N.x[i],1);nRender();});});
+  N.w.forEach((v,i)=>{const s=knob($("n-w"),"nw"+i,`w${"₁₂₃"[i]}`,-2,2,0.1,v,1);s.addEventListener("input",()=>{N.w[i]=+s.value;$("nw"+i+"-o").textContent=f(N.w[i],1);nRender();});});
+  const sb=knob($("n-w"),"nb","편향 b",-2,2,0.1,N.b,1);sb.addEventListener("input",()=>{N.b=+sb.value;$("nb-o").textContent=f(N.b,1);nRender();});
+  $("n-act").addEventListener("change",e=>{N.act=e.target.value;nRender();});
+}
+function nRender(){
+  const S=N.x.reduce((s,x,i)=>s+x*N.w[i],0)+N.b, y=ACT[N.act].f(S);
+  $("n-sum").textContent=f(S,3);$("n-y").textContent=f(y,3);
+  const el=$("n-diag"),w=W(el),h=Math.round(Math.min(300,Math.max(230,w*0.45)));
+  const sm=w<500,R=sm?15:19,fs=sm?11.5:12.5;
+  const xi=w*0.07+4,xw=w*0.29,xs=w*0.53,xp=w*0.72,xo=w*0.92,ys=[h*0.24,h*0.5,h*0.76],yc=h*0.56;
+  let g="";
+  N.x.forEach((x,i)=>{g+=`<line x1="${xi}" y1="${ys[i]}" x2="${xw}" y2="${ys[i]}" stroke="${css('rule')}" stroke-width="1.5"/>`;
+    g+=`<line x1="${xw}" y1="${ys[i]}" x2="${xs}" y2="${yc}" stroke="${edgeColor(N.w[i])}" stroke-width="${(1+Math.abs(N.w[i])*2.6).toFixed(1)}" opacity=".85"/>`;});
+  g+=`<line x1="${xs}" y1="${h*0.12+R}" x2="${xs}" y2="${yc-R*1.3}" stroke="${edgeColor(N.b)}" stroke-width="${(1+Math.abs(N.b)*2.6).toFixed(1)}" opacity=".85"/>`;
+  g+=`<line x1="${xs+R*1.3}" y1="${yc}" x2="${xp-R*1.3}" y2="${yc}" stroke="${css('ink')}" stroke-width="1.6"/><line x1="${xp+R*1.3}" y1="${yc}" x2="${xo-R}" y2="${yc}" stroke="${css('fit')}" stroke-width="2.2"/>`;
+  N.x.forEach((x,i)=>{
+    g+=`<circle cx="${xi}" cy="${ys[i]}" r="${R}" fill="${css('raise')}" stroke="${css('ink')}"/><text x="${xi}" y="${ys[i]+4}" text-anchor="middle" font-size="${fs}" class="num" fill="${css('ink')}">${f(x,1)}</text>`;
+    g+=`<circle cx="${xw}" cy="${ys[i]}" r="${R}" fill="${css('wash')}" stroke="${edgeColor(N.w[i])}" stroke-width="1.6"/><text x="${xw}" y="${ys[i]+4}" text-anchor="middle" font-size="${fs}" class="num" fill="${css('ink')}">${f(N.w[i],1)}</text>`;});
+  g+=`<circle cx="${xs}" cy="${h*0.12}" r="${R*0.9}" fill="${css('raise')}" stroke="${edgeColor(N.b)}" stroke-width="1.6"/><text x="${xs}" y="${h*0.12+4}" text-anchor="middle" font-size="${fs}" class="num" fill="${css('ink')}">${f(N.b,1)}</text>`;
+  g+=`<circle cx="${xs}" cy="${yc}" r="${R*1.3}" fill="${css('raise')}" stroke="${css('ink')}" stroke-width="1.6"/><text x="${xs}" y="${yc+7}" text-anchor="middle" font-size="${R*1.15}" fill="${css('ink')}">Σ</text>`;
+  g+=`<rect x="${xp-R*1.3}" y="${yc-R*1.3}" width="${R*2.6}" height="${R*2.6}" rx="3" fill="${css('raise')}" stroke="${css('ink')}" stroke-width="1.6"/><text x="${xp}" y="${yc+6}" text-anchor="middle" font-size="${R*0.95}" fill="${css('ink')}">φ</text>`;
+  g+=`<circle cx="${xo}" cy="${yc}" r="${R}" fill="${css('fit')}"/><text x="${xo}" y="${yc+4}" text-anchor="middle" font-size="${fs}" class="num" fill="#fff" font-weight="600">${f(y,2)}</text>`;
+  const lab=(x,yy,t,a="middle")=>g+=`<text x="${x}" y="${yy}" text-anchor="${a}" font-size="${fs-0.5}" fill="${css('soft')}">${t}</text>`;
+  lab(xi,h-8,"입력");lab(xw,h-8,"가중치");lab(xs,yc+R*1.3+17,`Σ = ${f(S,2)}`);lab(xs+R+6,h*0.12+4,"편향","start");lab(xp,yc+R*1.3+17,ACT[N.act].n);lab(xo,yc+R+17,"출력");
+  el.innerHTML=`<svg viewBox="0 0 ${w} ${h}" role="img" xmlns="http://www.w3.org/2000/svg">${g}</svg>`;
+  const terms=N.x.map((x,i)=>`(${f(N.w[i],1)} × ${f(x,1)})`).join(" + ");
+  const yform=N.act==="none"?`y = Σ = ${f(y,3)}`:N.act==="step"?`y = 계단(${f(S,3)}) = ${y}  <span class="k">(Σ가 0 이상이면 1)</span>`:`y = σ(${f(S,3)}) = 1 / (1 + e<sup>${f(-S,3)}</sup>) = ${f(y,3)}`;
+  $("n-form").innerHTML=`Σ = w₁x₁ + w₂x₂ + w₃x₃ + b = ${terms} + ${f(N.b,1)} = ${f(S,3)}<br>${yform}`;
+  const pts=[];for(let z=-6;z<=6.001;z+=0.05)pts.push([z,ACT[N.act].f(z)]);
+  const yr=N.act==="none"?[-6.5,6.5]:[-0.15,1.15];
+  chart($("n-actplot"),{xr:[-6,6],yr,h:Math.min(220,Math.max(180,W($("n-actplot"))*0.3)),series:[{pts,color:css('ink'),w:2}],marks:[{x:Math.max(-6,Math.min(6,S)),y,color:css('fit')}],xl:"가중합 Σ",yl:"출력"});
+}
+
+/* ═══════════ 2. 오차로 배우기 ═══════════ */
+const TRUEC=1/1.609344;
+const LE={km:100,c:0.5,hist:[]};
+const target=()=>LE.km*TRUEC;
+function leRecord(kind){const out=LE.c*LE.km,err=target()-out;LE.hist.push({n:LE.hist.length,kind,c:LE.c,out,err});}
+function leReset(){LE.c=0.5;LE.hist=[];leRecord("시작");leRender();}
+function leInit(){
+  $("l-km").addEventListener("change",e=>{const v=+e.target.value;if(isFinite(v)&&v>0){LE.km=v;LE.hist=[];leRecord("시작");leRender();}});
+  $("l-up").addEventListener("click",()=>{LE.c=+(LE.c+0.1).toFixed(6);leRecord("직접");leRender();});
+  $("l-dn").addEventListener("click",()=>{LE.c=+(LE.c-0.1).toFixed(6);leRecord("직접");leRender();});
+  $("l-rate").addEventListener("input",e=>{$("l-rate-o").textContent=f(+e.target.value,2);leNote();});
+  const step=()=>{const L=+$("l-rate").value,err=target()-LE.c*LE.km;LE.c+=L*err/LE.km;
+    if(!isFinite(LE.c)||Math.abs(LE.c)>1e6){LE.c=Math.sign(LE.c||1)*1e6;}leRecord("규칙");};
+  $("l-step").addEventListener("click",()=>{step();leRender();});
+  $("l-ten").addEventListener("click",()=>{for(let i=0;i<10;i++)step();leRender();});
+  $("l-reset").addEventListener("click",leReset);
+  leReset();
+}
+function leNote(){
+  const L=+$("l-rate").value,k=1-L;
+  let t=`이 규칙대로 고치면 매 단계 정답 계수와의 차이가 (1 − 학습률)배, 지금은 ${f(k,2)}배가 됩니다. `;
+  if(L<0.999)t+="학습률이 1보다 작으면 정답 쪽으로 조금씩 다가갑니다.";
+  else if(L<=1.001)t+="학습률이 1이면 한 번에 정답에 닿습니다. 데이터가 하나뿐이고 오차가 전혀 없는 문제라서 가능한 일입니다.";
+  else if(L<1.999)t+="학습률이 1보다 크면 정답을 지나쳤다가 되돌아오며 출렁입니다. 0.7로 올렸다가 오차가 음수가 되는 것과 같은 상황입니다.";
+  else t+="학습률이 2 이상이면 고칠수록 정답에서 멀어집니다. 학습률이 너무 크면 학습이 발산하는 이유입니다.";
+  $("l-note").textContent=t;
+}
+function leRender(){
+  const last=LE.hist[LE.hist.length-1],tg=target();
+  $("l-n").textContent=last.n;$("l-c").textContent=f(last.c,4);$("l-out").textContent=f(last.out,3);$("l-err").textContent=f(last.err,3);
+  const el=$("l-diag"),w=W(el),h=Math.round(Math.min(210,Math.max(170,w*0.3))),sm=w<520,fs=sm?11.5:13;
+  const cx=w*0.42,cy=h*0.42,R=Math.min(62,w*0.13);let g="";
+  g+=`<text x="${w*0.07}" y="${cy-6}" text-anchor="middle" font-size="${fs}" fill="${css('soft')}">km</text><text x="${w*0.07}" y="${cy+16}" text-anchor="middle" font-size="${fs+3}" class="num" fill="${css('pos')}">${f(LE.km,0)}</text>`;
+  g+=`<line x1="${w*0.15}" y1="${cy}" x2="${cx-R-6}" y2="${cy}" stroke="${css('pos')}" stroke-width="2.4" marker-end="url(#ar)"/>`;
+  g+=`<circle cx="${cx}" cy="${cy}" r="${R}" fill="${css('raise')}" stroke="${css('ink')}" stroke-width="2"/>`;
+  g+=`<text x="${cx}" y="${cy-8}" text-anchor="middle" font-size="${fs-0.5}" fill="${css('soft')}">마일 = km ×</text><text x="${cx}" y="${cy+15}" text-anchor="middle" font-size="${fs+3}" class="num" fill="${css('fit')}" font-weight="600">${f(last.c,4)}</text>`;
+  g+=`<line x1="${cx+R+6}" y1="${cy}" x2="${w*0.7}" y2="${cy}" stroke="${css('pos')}" stroke-width="2.4" marker-end="url(#ar)"/>`;
+  const rx=w*0.84;
+  g+=`<text x="${rx}" y="${cy-6}" text-anchor="middle" font-size="${fs}" fill="${css('soft')}">계산한 마일</text><text x="${rx}" y="${cy+16}" text-anchor="middle" font-size="${fs+3}" class="num" fill="${css('fit')}">${f(last.out,3)}</text>`;
+  g+=`<text x="${rx}" y="${h-36}" text-anchor="middle" font-size="${fs}" fill="${css('soft')}">정답 마일 ${f(tg,3)}</text>`;
+  g+=`<text x="${rx}" y="${h-12}" text-anchor="middle" font-size="${fs+1}" class="num" font-weight="600" fill="${css('warn')}">오차 ${f(last.err,3)}</text>`;
+  el.innerHTML=`<svg viewBox="0 0 ${w} ${h}" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="${css('pos')}"/></marker></defs>${g}</svg>`;
+  const pts=LE.hist.map(r=>[r.n,r.c]),cs=LE.hist.map(r=>r.c).concat([TRUEC]);
+  let lo=Math.min(...cs),hi=Math.max(...cs);const pad=(hi-lo)*0.12||0.1;lo-=pad;hi+=pad;
+  if(hi-lo>6){lo=Math.max(lo,TRUEC-3);hi=Math.min(hi,TRUEC+3);}
+  chart($("l-plot"),{xr:[0,Math.max(5,LE.hist.length-1)],yr:[lo,hi],series:[{pts,color:css('fit'),w:2.2}],points:[{pts,color:css('fit'),r:3.5}],hlines:[{y:TRUEC,color:css('pos')}],
+    legend:[{t:"계수",color:css('fit')},{t:"정답 0.621371",color:css('pos'),dash:"5 4"}],xl:"단계",yl:"계수"});
+  const rows=LE.hist.slice(-12).reverse();
+  $("l-hist").innerHTML=`<thead><tr><th>단계</th><th>고친 방법</th><th>계수</th><th>계산한 마일</th><th>오차</th></tr></thead><tbody>`+
+    rows.map(r=>`<tr><td class="num">${r.n}</td><td>${r.kind}</td><td class="num">${f(r.c,4)}</td><td class="num">${f(r.out,3)}</td><td class="num" style="color:${Math.abs(r.err)<0.01?css('good'):css('warn')}">${f(r.err,3)}</td></tr>`).join("")+`</tbody>`;
+  leNote();
+}
+
+/* ═══════════ 3. 활성화 함수 ═══════════ */
+const AC={x:0.8,th:1,der:true,why:"sig",seed:5};
+function acInit(){
+  $("a-x").addEventListener("input",e=>{AC.x=+e.target.value;$("a-x-o").textContent=f(AC.x,1);acRender();});
+  $("a-th").addEventListener("input",e=>{AC.th=+e.target.value;$("a-th-o").textContent=f(AC.th,1);acRender();});
+  $("a-x-o").textContent=f(AC.x,1);$("a-th-o").textContent=f(AC.th,1);
+  $("a-der").addEventListener("change",e=>{AC.der=e.target.checked;acRender();});
+  document.querySelectorAll('input[name="a-why"]').forEach(r=>r.addEventListener("change",e=>{AC.why=e.target.value;acWhy();}));
+  $("a-reroll").addEventListener("click",()=>{AC.seed+=1;acWhy();});
+}
+function acRender(){
+  const st=v=>v>=AC.th?1:0,s=sig(AC.x),ds=s*(1-s);
+  $("a-step").textContent=st(AC.x);$("a-sig").textContent=f(s,3);$("a-dsig").textContent=f(ds,3);
+  const P=fn=>{const p=[];for(let z=-6;z<=6.001;z+=0.04)p.push([z,fn(z)]);return p;};
+  const stepPts=[[-6,0],[AC.th,0],[AC.th,1],[6,1]];
+  const series=[{pts:stepPts,color:css('soft'),w:2.4},{pts:P(sig),color:css('fit'),w:2.6}];
+  const legend=[{t:`계단 함수 (기준값 ${f(AC.th,1)})`,color:css('soft')},{t:"시그모이드 σ(x)",color:css('fit')}];
+  const marks=[{x:AC.x,y:s,color:css('fit')},{x:AC.x,y:st(AC.x),color:css('soft')}];
+  if(AC.der){series.push({pts:P(z=>sig(z)*(1-sig(z))),color:css('pos'),w:2,dash:"6 4"});legend.push({t:"기울기 σ′(x)",color:css('pos'),dash:"6 4"});marks.push({x:AC.x,y:ds,color:css('pos')});}
+  chart($("a-plot"),{xr:[-6,6],yr:[-0.1,1.12],series,marks,legend,xl:"입력",yl:"출력"});
+}
+function acWhy(){
+  const r=lcg(1000+AC.seed*7919);const H=3,w1=[],b1=[],w2=[];
+  for(let k=0;k<H;k++){w1.push((r()*2-1)*3);b1.push((r()*2-1)*3);w2.push((r()*2-1)*2);}const b2=(r()*2-1);
+  const out=(x,a)=>w2.reduce((s,w,k)=>s+w*(a==="sig"?sig(w1[k]*x+b1[k]):(w1[k]*x+b1[k])),b2);
+  const pts=[];for(let x=-4;x<=4.001;x+=0.04)pts.push([x,out(x,AC.why)]);
+  const ys=pts.map(p=>p[1]);let lo=Math.min(...ys),hi=Math.max(...ys);const pd=(hi-lo)*0.15||1;
+  chart($("a-why"),{xr:[-4,4],yr:[lo-pd,hi+pd],series:[{pts,color:AC.why==="sig"?css('fit'):css('ink'),w:2.8}],xl:"입력 x",yl:"신경망 출력"});
+  if(AC.why==="none"){const sl=w2.reduce((s,w,k)=>s+w*w1[k],0),ic=w2.reduce((s,w,k)=>s+w*b1[k],b2);
+    $("a-why-note").innerHTML=`입력 1개, 은닉 뉴런 3개, 출력 1개인 신경망입니다. 활성화 함수가 없으면 층을 몇 개 쌓아도 식을 정리하면 직선 하나가 됩니다. 지금 가중치로는 y = ${f(sl,3)}x ${ic>=0?"+":"−"} ${f(Math.abs(ic),3)}입니다. 가중치를 다시 뽑아도 기울기만 바뀔 뿐 언제나 직선입니다.`;}
+  else $("a-why-note").textContent="같은 가중치에 시그모이드를 넣으면 출력이 휘어집니다. 은닉 뉴런마다 휘는 위치와 방향이 달라서, 이것들을 더하면 직선으로는 만들 수 없는 곡선이 됩니다. 신경망이 비선형 관계를 배울 수 있는 이유입니다.";
+}
+
+/* ═══════════ 4. 신경망 학습 ═══════════ */
+const D=(()=>{const feat=BODY.feat.map(o=>({id:o.id,name:o.name,unit:o.unit,v:o.v.split(",").map(Number)}));
+  const y=BODY.y.split(",").map(Number),n=BODY.n;
+  const r=lcg(20261012),idx=[...Array(n).keys()];
+  for(let i=n-1;i>0;i--){const j=Math.floor(r()*(i+1));[idx[i],idx[j]]=[idx[j],idx[i]];}
+  const nt=Math.round(n*0.2);
+  return {feat,y,n,te:idx.slice(0,nt).sort((a,b)=>a-b),tr:idx.slice(nt).sort((a,b)=>a-b)};})();
+const T={sel:["hgt","wai_gi","che_gi"],H:3,lr:0.3,ep:0,hist:[],run:false,M:null,lin:null,raf:0,MAX:3000};
+const mean=a=>a.reduce((s,v)=>s+v,0)/a.length;
+const sd=a=>{const m=mean(a);return Math.sqrt(a.reduce((s,v)=>s+(v-m)*(v-m),0)/a.length)||1;};
+function prep(){
+  const F=T.sel.map(id=>D.feat.find(o=>o.id===id));
+  const mu=F.map(o=>mean(D.tr.map(i=>o.v[i]))),sg=F.map(o=>sd(D.tr.map(i=>o.v[i])));
+  const ym=mean(D.tr.map(i=>D.y[i])),ys=sd(D.tr.map(i=>D.y[i]));
+  const X=[...Array(D.n).keys()].map(i=>F.map((o,k)=>(o.v[i]-mu[k])/sg[k]));
+  return {F,mu,sg,ym,ys,X,Y:D.y.map(v=>(v-ym)/ys)};
+}
+function solve(A,b){const n=b.length,M=A.map((r,i)=>r.concat([b[i]]));
+  for(let c=0;c<n;c++){let p=c;for(let r=c+1;r<n;r++)if(Math.abs(M[r][c])>Math.abs(M[p][c]))p=r;[M[c],M[p]]=[M[p],M[c]];
+    for(let r=0;r<n;r++){if(r===c)continue;const k=M[r][c]/M[c][c];for(let j=c;j<=n;j++)M[r][j]-=k*M[c][j];}}
+  return M.map((r,i)=>r[n]/r[i]);}
+function fitLinear(P){const m=P.F.length+1,A=[...Array(m)].map(()=>Array(m).fill(0)),b=Array(m).fill(0);
+  for(const i of D.tr){const row=[1,...P.X[i]];for(let a=0;a<m;a++){b[a]+=row[a]*P.Y[i];for(let c=0;c<m;c++)A[a][c]+=row[a]*row[c];}}
+  const beta=solve(A,b);return {beta,pred:x=>([1,...x].reduce((s,v,k)=>s+v*beta[k],0))};}
+function initNet(){const P=prep(),nI=P.F.length,H=T.H,r=lcg(7+nI*31+H*101);
+  const W1=[...Array(nI)].map(()=>[...Array(H)].map(()=>gauss(r)*0.5)),b1=Array(H).fill(0),W2=[...Array(H)].map(()=>gauss(r)*0.5);
+  T.M={P,W1,b1,W2,b2:0,nI,H};T.lin=fitLinear(P);T.ep=0;T.hist=[];record();}
+function fwd(M,x){const a=new Array(M.H);let o=M.b2;for(let h=0;h<M.H;h++){let z=M.b1[h];for(let k=0;k<M.nI;k++)z+=x[k]*M.W1[k][h];a[h]=sig(z);o+=a[h]*M.W2[h];}return {a,o};}
+function epoch(){const M=T.M,P=M.P,N=D.tr.length,gW1=M.W1.map(r=>r.map(()=>0)),gb1=Array(M.H).fill(0),gW2=Array(M.H).fill(0);let gb2=0;
+  for(const i of D.tr){const x=P.X[i],{a,o}=fwd(M,x),e=(o-P.Y[i])*2/N;gb2+=e;
+    for(let h=0;h<M.H;h++){gW2[h]+=e*a[h];const d=e*M.W2[h]*a[h]*(1-a[h]);gb1[h]+=d;for(let k=0;k<M.nI;k++)gW1[k][h]+=d*x[k];}}
+  const lr=T.lr;M.b2-=lr*gb2;for(let h=0;h<M.H;h++){M.W2[h]-=lr*gW2[h];M.b1[h]-=lr*gb1[h];for(let k=0;k<M.nI;k++)M.W1[k][h]-=lr*gW1[k][h];}T.ep++;}
+function metrics(pf){const P=T.M.P,res=I=>{let se=0;const ys=I.map(i=>D.y[i]),m=mean(ys);let st=0;
+    I.forEach(i=>{const p=pf(P.X[i])*P.ys+P.ym,e=D.y[i]-p;se+=e*e;st+=(D.y[i]-m)**2;});return {rmse:Math.sqrt(se/I.length),r2:1-se/st};};
+  return {tr:res(D.tr),te:res(D.te)};}
+const nnPred=x=>fwd(T.M,x).o;
+function record(){const m=metrics(nnPred);T.hist.push([T.ep,m.tr.rmse,m.te.rmse]);return m;}
+function tInit(){
+  const host=$("t-feats");
+  D.feat.forEach(o=>{const l=document.createElement("label");l.innerHTML=`<input type="checkbox" value="${o.id}" ${T.sel.includes(o.id)?"checked":""}>${esc(o.name)}`;host.appendChild(l);
+    l.querySelector("input").addEventListener("change",e=>{const on=[...host.querySelectorAll("input:checked")].map(i=>i.value);
+      if(!on.length){e.target.checked=true;return;}T.sel=D.feat.map(f=>f.id).filter(id=>on.includes(id));tReset();});});
+  $("t-h").addEventListener("input",e=>{T.H=+e.target.value;$("t-h-o").textContent=T.H;tReset();});
+  $("t-lr").addEventListener("input",e=>{T.lr=+e.target.value;$("t-lr-o").textContent=f(T.lr,2);});
+  $("t-run").addEventListener("click",()=>{T.run?tStop():tStart();});
+  $("t-fast").addEventListener("click",()=>{tStop();while(T.ep<T.MAX){epoch();if(T.ep%25===0)record();}if(T.hist[T.hist.length-1][0]!==T.ep)record();tRender(true);});
+  $("t-reset").addEventListener("click",tReset);
+  tReset();
+}
+function tReset(){tStop();initNet();buildPred();tRender(true);}
+function tStart(){if(T.ep>=T.MAX){initNet();}T.run=true;$("t-run").textContent="멈춤";
+  const loop=()=>{if(!T.run)return;for(let k=0;k<(REDUCED?60:12);k++){epoch();if(T.ep%25===0)record();if(T.ep>=T.MAX)break;}
+    tRender(false);if(T.ep>=T.MAX){if(T.hist[T.hist.length-1][0]!==T.ep)record();tStop();tRender(true);return;}T.raf=requestAnimationFrame(loop);};T.raf=requestAnimationFrame(loop);}
+function tStop(){T.run=false;cancelAnimationFrame(T.raf);$("t-run").textContent=T.ep>=T.MAX?"다시 학습":"학습 시작";}
+function tDiag(){const M=T.M,el=$("t-diag"),w=W(el),nI=M.nI,H=M.H,sm=w<520;
+  const h=Math.round(Math.max(220,Math.min(360,40+Math.max(nI,H)*(sm?40:46))));
+  const xi=sm?62:96,xh=w*0.56,xo=w-(sm?44:70),R=sm?11:14,fs=sm?11:12.5;
+  const yI=k=>h*(k+1)/(nI+1),yH=k=>h*(k+1)/(H+1),yO=h/2;
+  const mx=Math.max(1e-6,...M.W1.flat().map(Math.abs),...M.W2.map(Math.abs));let g="";
+  for(let k=0;k<nI;k++)for(let j=0;j<H;j++){const v=M.W1[k][j];g+=`<line x1="${xi}" y1="${yI(k)}" x2="${xh}" y2="${yH(j)}" stroke="${edgeColor(v)}" stroke-width="${(0.6+Math.abs(v)/mx*5).toFixed(2)}" opacity="${(0.35+0.6*Math.abs(v)/mx).toFixed(2)}"/>`;}
+  for(let j=0;j<H;j++){const v=M.W2[j];g+=`<line x1="${xh}" y1="${yH(j)}" x2="${xo}" y2="${yO}" stroke="${edgeColor(v)}" stroke-width="${(0.6+Math.abs(v)/mx*5).toFixed(2)}" opacity="${(0.35+0.6*Math.abs(v)/mx).toFixed(2)}"/>`;}
+  for(let k=0;k<nI;k++){g+=`<circle cx="${xi}" cy="${yI(k)}" r="${R}" fill="${css('raise')}" stroke="${css('ink')}" stroke-width="1.5"/><text x="${xi-R-6}" y="${yI(k)+4}" text-anchor="end" font-size="${fs}" fill="${css('ink')}">${esc(M.P.F[k].name)}</text>`;}
+  for(let j=0;j<H;j++)g+=`<circle cx="${xh}" cy="${yH(j)}" r="${R}" fill="${css('wash')}" stroke="${css('ink')}" stroke-width="1.5"/><text x="${xh}" y="${yH(j)+4}" text-anchor="middle" font-size="${fs-1}" fill="${css('soft')}">σ</text>`;
+  g+=`<circle cx="${xo}" cy="${yO}" r="${R+2}" fill="${css('fit')}"/><text x="${xo}" y="${yO+R+18}" text-anchor="middle" font-size="${fs}" fill="${css('ink')}">몸무게</text>`;
+  g+=`<text x="${(xi+xh)/2}" y="${h-4}" text-anchor="middle" font-size="${fs-0.5}" fill="${css('soft')}">가중치 ${nI*H}개</text><text x="${(xh+xo)/2}" y="${h-4}" text-anchor="middle" font-size="${fs-0.5}" fill="${css('soft')}">가중치 ${H}개</text>`;
+  el.innerHTML=`<svg viewBox="0 0 ${w} ${h}" role="img" xmlns="http://www.w3.org/2000/svg">${g}</svg>`;
+  const P=nI*H+H+H+1;
+  $("t-count").innerHTML=`입력 ${nI}개 → 은닉 뉴런 ${H}개 → 출력 1개. 가중치 ${nI*H}개와 편향 ${H}개, 다시 가중치 ${H}개와 편향 1개로 모두 <b>${P}개</b>를 학습합니다. 선의 굵기는 가중치의 크기, 청록은 양수, 자홍은 음수입니다.`;}
+function tRender(full){
+  const last=T.hist[T.hist.length-1],m=metrics(nnPred),lm=metrics(T.lin.pred);
+  $("t-ep").textContent=T.ep.toLocaleString("ko-KR");$("t-tr").textContent=f(m.tr.rmse,2)+" kg";$("t-te").textContent=f(m.te.rmse,2)+" kg";$("t-lin").textContent=f(lm.te.rmse,2)+" kg";
+  tDiag();
+  const H=T.hist,ys=H.flatMap(r=>[r[1],r[2]]).concat([lm.te.rmse]);
+  chart($("t-loss"),{xr:[0,Math.max(100,T.MAX)],yr:[0,Math.min(Math.max(...ys)*1.08,30)],series:[{pts:H.map(r=>[r[0],r[1]]),color:css('ink'),w:2},{pts:H.map(r=>[r[0],r[2]]),color:css('fit'),w:2.4}],
+    hlines:[{y:lm.te.rmse,color:css('pos')}],legend:[{t:"학습 데이터",color:css('ink')},{t:"시험 데이터",color:css('fit')},{t:"선형회귀 (시험)",color:css('pos'),dash:"5 4"}],xl:"반복 횟수",yl:"오차 RMSE (kg)"});
+  if(!full&&T.ep%100!==0)return;
+  const P=T.M.P,pts=D.te.map(i=>[D.y[i],nnPred(P.X[i])*P.ys+P.ym]),lp=D.te.map(i=>[D.y[i],T.lin.pred(P.X[i])*P.ys+P.ym]);
+  const all=pts.concat(lp).flat(),lo=Math.floor(Math.min(...all)/5)*5-2,hi=Math.ceil(Math.max(...all)/5)*5+2;
+  chart($("t-scatter"),{xr:[lo,hi],yr:[lo,hi],h:Math.min(380,Math.max(260,W($("t-scatter"))*0.6)),series:[{pts:[[lo,lo],[hi,hi]],color:css('soft'),w:1.4,dash:"5 4"}],
+    points:[{pts:lp,color:css('pos'),fill:"none",r:3.4,sw:1.3,op:.75},{pts,color:css('fit'),r:3.2,op:.85}],legend:[{t:"신경망",color:css('fit'),dot:true},{t:"선형회귀",color:css('pos'),dot:true,hollow:true},{t:"완벽히 맞힌 선",color:css('soft'),dash:"5 4"}],xl:"실제 몸무게 (kg)",yl:"추정 몸무게 (kg)"});
+  const np=T.M.nI*T.M.H+2*T.M.H+1;
+  $("t-cmp").innerHTML=`<thead><tr><th>방법</th><th>파라미터</th><th>학습 오차</th><th>시험 오차</th><th>시험 R²</th></tr></thead><tbody>
+   <tr><td>선형회귀</td><td class="num">${T.M.nI+1}</td><td class="num">${f(lm.tr.rmse,2)} kg</td><td class="num">${f(lm.te.rmse,2)} kg</td><td class="num">${f(lm.te.r2,3)}</td></tr>
+   <tr><td>신경망 (반복 ${T.ep.toLocaleString("ko-KR")}회)</td><td class="num">${np}</td><td class="num">${f(m.tr.rmse,2)} kg</td><td class="num">${f(m.te.rmse,2)} kg</td><td class="num">${f(m.te.r2,3)}</td></tr></tbody>`;
+  const al=$("t-alert");
+  if(T.ep<500){al.hidden=true;}
+  else{const d=m.te.rmse-lm.te.rmse;al.hidden=false;
+    al.innerHTML=d>-0.05?`<b>이 조합에서는 신경망이 선형회귀보다 낫지 않습니다.</b> 시험 오차가 선형회귀 ${f(lm.te.rmse,2)}kg, 신경망 ${f(m.te.rmse,2)}kg입니다. 몸무게와 신체 치수의 관계가 거의 직선이라, 곡선을 표현하는 신경망의 장점이 드러날 여지가 없습니다. 파라미터가 ${np}개로 선형회귀(${T.M.nI+1}개)보다 훨씬 많은데도 결과가 같거나 못하다면, 이 문제에는 단순한 모형이 맞다는 뜻입니다.`
+      :`신경망의 시험 오차가 선형회귀보다 ${f(-d,2)}kg 작습니다. 이 조합에서는 치수와 몸무게 사이에 직선으로 다 담기지 않는 관계가 있어, 신경망이 그것을 일부 잡아낸 것으로 볼 수 있습니다.`;}
+  predOut();
+}
+function buildPred(){const host=$("t-pred");host.innerHTML="";const P=T.M.P;
+  P.F.forEach((o,k)=>{const vals=o.v,m=mean(vals);const wrap=document.createElement("div");wrap.className="knob";
+    if(o.id==="sex")wrap.innerHTML=`<label for="tp${k}">${esc(o.name)}</label><span></span><select id="tp${k}" style="grid-column:1/-1"><option value="1">남</option><option value="0">여</option></select>`;
+    else wrap.innerHTML=`<label for="tp${k}">${esc(o.name)} (${esc(o.unit)})</label><span></span><input type="number" id="tp${k}" step="0.1" value="${m.toFixed(o.id==="age"?0:1)}" style="grid-column:1/-1" inputmode="decimal">`;
+    host.appendChild(wrap);$("tp"+k).addEventListener("input",predOut);});predOut();}
+function predOut(){const P=T.M.P;const raw=P.F.map((o,k)=>+$("tp"+k).value);if(raw.some(v=>!isFinite(v))){$("t-pred-out").textContent="숫자를 넣어 주세요.";return;}
+  const x=raw.map((v,k)=>(v-P.mu[k])/P.sg[k]),nn=nnPred(x)*P.ys+P.ym,ln=T.lin.pred(x)*P.ys+P.ym;
+  const out=P.F.filter((o,k)=>o.id!=="sex"&&(raw[k]<Math.min(...o.v)||raw[k]>Math.max(...o.v)));
+  $("t-pred-out").innerHTML=`신경망 <b>${f(nn,1)} kg</b><br>선형회귀 <b>${f(ln,1)} kg</b>`+(out.length?`<br><span class="k" style="color:${css('warn')}">${esc(out.map(o=>o.name).join(", "))}이 데이터 범위 밖이라 추정이 부정확할 수 있습니다.</span>`:"");}
+
+/* ═══════════ 5. 이미지와 행렬 ═══════════ */
+const IM={v:new Array(196).fill(0),down:false};
+const ONE={2:{6:.6,7:.8},3:{6:.7,7:1},4:{6:.7,7:1},5:{6:.5,7:1,8:.4},6:{7:1,8:.4},7:{7:1,8:.4},8:{7:1,8:.7},9:{7:1,8:1},10:{7:.9,8:1,9:.1},11:{7:.3,8:1,9:.1}};
+function imInit(){const pad=$("pad");for(let i=0;i<196;i++){const c=document.createElement("i");c.dataset.i=i;pad.appendChild(c);}
+  const paint=e=>{const t=document.elementFromPoint(e.clientX,e.clientY);if(!t||t.parentNode!==pad)return;const i=+t.dataset.i,r=Math.floor(i/14),c=i%14;
+    for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){const rr=r+dr,cc=c+dc;if(rr<0||rr>13||cc<0||cc>13)continue;const k=rr*14+cc,add=(dr===0&&dc===0)?1:(dr===0||dc===0)?0.35:0.1;
+      IM.v[k]=Math.min(1,Math.round((IM.v[k]+add)*10)/10);}imRender();};
+  pad.addEventListener("pointerdown",e=>{IM.down=true;pad.setPointerCapture(e.pointerId);paint(e);});
+  pad.addEventListener("pointermove",e=>{if(IM.down)paint(e);});
+  ["pointerup","pointercancel","pointerleave"].forEach(ev=>pad.addEventListener(ev,()=>IM.down=false));
+  $("i-clear").addEventListener("click",()=>{IM.v.fill(0);imRender();});
+  $("i-one").addEventListener("click",()=>{IM.v.fill(0);for(const r in ONE)for(const c in ONE[r])IM.v[+r*14+ +c]=ONE[r][c];imRender();});
+  $("i-h").addEventListener("input",e=>{$("i-h-o").textContent=e.target.value;imCount();});
+  $("i-one").click();imCount();}
+function imRender(){const cells=$("pad").children;let on=0,s=0,m="";
+  IM.v.forEach((v,i)=>{const g=Math.round(255*(1-v));cells[i].style.background=`rgb(${g},${g},${g})`;if(v>0){on++;s+=v;}
+    m+=`<span class="${v>0?"on":""}">${v===0?"0":v===1?"1":String(v.toFixed(1)).replace(/^0/,"")}</span>`;});
+  $("mat").innerHTML=m;$("i-on").textContent=on;$("i-sum").textContent=f(s,1);}
+function imCount(){const H=+$("i-h").value;$("i-count").innerHTML=`가중치 196 × ${H} = <b>${(196*H).toLocaleString("ko-KR")}개</b><br>편향 ${H}개`;}
+
+/* ═══════════ 단계 전환 ═══════════ */
+const SUB={neuron:"뉴런 하나가 계산하는 방법",learn:"오차를 보고 가중치를 고치는 방법",act:"출력을 켜고 끄는 기준",net:"실측 데이터로 학습하는 신경망",img:"이미지가 숫자가 되는 방법"};
+const RENDER={neuron:nRender,learn:leRender,act:()=>{acRender();acWhy();},net:()=>tRender(true),img:imRender};
+let CUR="neuron";
+function slide(){const b=document.querySelector(`.nav button[data-sec="${CUR}"]`),nav=$("nav");if(!b)return;
+  $("nind").style.width=b.offsetWidth+"px";$("nind").style.transform=`translateX(${b.offsetLeft}px)`;}
+function go(sec,push){if(!SUB[sec])sec="neuron";if(sec!==CUR&&T.run&&sec!=="net")tStop();CUR=sec;
+  document.querySelectorAll(".nav button").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.sec===sec)));
+  document.querySelectorAll(".sec").forEach(s=>{const on=s.dataset.sec===sec;s.hidden=!on;s.classList.toggle("show",on);});
+  $("secsub").textContent=SUB[sec];slide();RENDER[sec]();
+  const b=document.querySelector(`.nav button[data-sec="${sec}"]`);if(b&&b.scrollIntoView)b.scrollIntoView({block:"nearest",inline:"nearest"});
+  if(push)history.replaceState(null,"","#"+sec);}
+(function init(){
+  let framed=false;try{framed=window.self!==window.top;}catch(e){framed=true;}if(framed)document.documentElement.classList.add("embed");
+  nInit();leInit();acInit();tInit();imInit();
+  document.querySelectorAll(".nav button").forEach(b=>b.addEventListener("click",()=>go(b.dataset.sec,true)));
+  go((location.hash||"").slice(1)||"neuron",false);
+  let lw=window.innerWidth,rt;window.addEventListener("resize",()=>{clearTimeout(rt);rt=setTimeout(()=>{slide();if(Math.abs(window.innerWidth-lw)>30){lw=window.innerWidth;RENDER[CUR]();}},150);});
+  window.addEventListener("hashchange",()=>go(location.hash.slice(1),false));
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(slide);
+})();
+
+</script>
+</body>
+</html>
