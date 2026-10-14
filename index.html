@@ -52,9 +52,13 @@ body{margin:0;background:var(--paper);color:var(--ink);
 .top{position:sticky;top:0;z-index:20;background:var(--paper);
   border-bottom:1px solid var(--ink);
   padding:calc(12px + env(safe-area-inset-top,0px)) 18px 0}
-.topin{max-width:1180px;margin:0 auto;display:flex;align-items:center;
+.topin{max-width:1180px;margin:0 auto;display:flex;align-items:flex-end;
   justify-content:space-between;gap:14px;flex-wrap:wrap}
-.brand{display:flex;align-items:baseline;gap:10px;min-width:0}
+.brand{display:flex;flex-direction:column;min-width:0;padding-bottom:9px}
+.site{display:flex;align-items:baseline;gap:16px}
+.site a{font-size:1.12rem;color:var(--soft);text-decoration:none;white-space:nowrap;transition:color var(--t1) var(--ease)}
+.site a:hover{color:var(--ink)}
+.site a:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:2px}
 .brand h1{margin:0;font-size:1.12rem;font-weight:600;letter-spacing:-.015em;white-space:nowrap}
 .brand span{font-size:.78rem;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .modes{position:relative;display:flex;margin:0 0 -1px;flex-shrink:0}
@@ -270,7 +274,7 @@ table.tbl tr.sel{background:var(--wash)}
 <body>
 <header class="top">
   <div class="topin">
-    <div class="brand"><h1>회귀분석</h1><span id="modesub">직선 하나를 두 가지 방법으로 구합니다</span></div>
+    <div class="brand"><div class="site"><h1>회귀분석</h1><a href="neural-network.html">인공신경망</a></div><span id="modesub">직선 하나를 두 가지 방법으로 구합니다</span></div>
     <nav class="modes" role="group" aria-label="분석 모드">
       <button id="mode-lin" aria-pressed="true">선형</button>
       <button id="mode-non" aria-pressed="false">비선형</button>
