@@ -175,7 +175,7 @@ footer a{color:var(--dink)}
    <div class="pbar" id="pbar" aria-hidden="true"><i id="pfill"></i></div>
    <p class="pstat" id="pstat" role="status" aria-live="polite"></p>
    <p class="praw num" id="praw"></p>
-   <p class="mnote">처음 한 번만 모델 파일을 내려받습니다(가장 작은 모델도 수백 MB). 다음부터는 브라우저에 저장된 것을 써서 금방 열립니다. 모델이 클수록 답은 낫지만 그래픽 메모리가 더 필요합니다.</p>
+   <p class="mnote">처음 한 번만 모델 파일을 내려받습니다(0.8B는 약 405MB). 다음부터는 브라우저에 저장된 것을 써서 빨리 열립니다. 모델이 클수록 답은 낫지만 그래픽 메모리가 더 필요하고 느려집니다.</p>
   </div>
  </div>
 </section>
@@ -204,7 +204,7 @@ footer a{color:var(--dink)}
    </div>
    <label class="sw"><input type="checkbox" id="useKb" checked><span>사이트 자료를 참고해서 답하기<small>질문과 관련된 결과를 골라 모델에 함께 넣어 줍니다. 끄면 모델이 아는 것만으로 답합니다.</small></span></label>
    <button class="btn" id="reset" type="button" disabled>대화 지우기</button>
-   <p class="caution">작은 모델이라 틀린 답이 나올 수 있습니다. 숫자는 회귀분석, 인공신경망 페이지에서 직접 확인하는 것이 정확합니다.</p>
+   <p class="caution">작은 모델이라 틀린 답이나 어색한 문장이 나올 수 있습니다. 숫자는 회귀분석, 인공신경망 페이지에서 직접 확인하는 것이 정확합니다. 노트북 내장 그래픽으로 시험했을 때 답 하나에 10~20초 걸렸습니다.</p>
   </aside>
  </div>
 
@@ -214,7 +214,7 @@ footer a{color:var(--dink)}
    <div class="card hcard rv" style="--i:0"><div class="ill" data-ill="tok" aria-hidden="true"></div><h3><span class="n1">1</span>글을 토큰으로 자른다</h3><p>모델은 글자를 그대로 읽지 못한다. 문장을 토큰이라는 조각으로 자르고, 조각마다 번호를 붙여 숫자로 바꾼다. 인공신경망 페이지에서 속도나 온도를 숫자로 넣은 것과 같은 일이다.</p></div>
    <div class="card hcard rv" style="--i:1"><div class="ill" data-ill="prob" aria-hidden="true"></div><h3><span class="n1">2</span>다음 토큰의 확률을 계산한다</h3><p>지금까지의 토큰을 넣으면, 모델은 다음에 올 수 있는 모든 토큰에 점수를 매긴다. 이 점수를 Softmax 함수로 확률로 바꾼다. 숫자 하나를 내던 회귀용 신경망과 달리, 출력이 "후보마다의 확률"이다.</p></div>
    <div class="card hcard rv" style="--i:2"><div class="ill" data-ill="loop" aria-hidden="true"></div><h3><span class="n1">3</span>하나를 골라 붙이고, 다시 계산한다</h3><p>확률이 높은 토큰 가운데 하나를 골라 문장 끝에 붙인다. 그리고 늘어난 문장을 다시 넣어 그다음 토큰을 고른다. 답이 조금씩 나타나는 건 이 과정이 그대로 보이는 것이다.</p></div>
-   <div class="card hcard rv" style="--i:3"><div class="ill" data-ill="kb" aria-hidden="true"></div><h3><span class="n1">4</span>사이트 자료를 같이 넣어 준다</h3><p>작은 모델은 모르는 것도 아는 것처럼 지어내기 쉽다. 그래서 질문에 나온 낱말로 이 사이트의 결과 가운데 관련된 부분을 골라, 질문과 함께 모델에 넣는다. 어떤 자료를 넣었는지는 답 아래에 표시된다.</p></div>
+   <div class="card hcard rv" style="--i:3"><div class="ill" data-ill="kb" aria-hidden="true"></div><h3><span class="n1">4</span>사이트 자료를 같이 넣어 준다</h3><p>작은 모델은 모르는 것도 아는 것처럼 지어내기 쉽다. 그래서 질문에 나온 낱말로 이 사이트의 결과 가운데 관련된 부분을 골라 질문 바로 앞에 붙이고, 자료를 옮겨 적지 말고 두 문장으로 답하라고 시킨다. 어떤 자료를 넣었는지는 답 아래에 표시된다.</p></div>
   </div>
   <div class="card rv" style="padding:20px 22px;--i:1">
    <h3 style="margin-bottom:12px">인공신경망 페이지의 신경망과 비교</h3>
@@ -254,6 +254,7 @@ const CHIPS=["안녕, 넌 누구야?","신경망이 정지거리에서 진 이�
 /* ── 사이트 자료: 질문에 나온 낱말로 관련된 것만 골라 모델에 넣는다 ── */
 const KB_BASE="이 사이트는 실측 데이터 6종(자동차 정지거리, 수은 증기압, 미국 인구, 효소 반응속도, 테다소나무 성장, 차량 연비)에 회귀분석과 인공신경망을 적용한 결과를 보여 준다. 인공신경망(은닉층 1개, 은닉 뉴런 4개)과 선형회귀의 오차(RMSE)를 비교했더니 6개 중 5개에서 신경망 오차가 더 작았고, 자동차 정지거리에서만 선형회귀가 더 정확했다.";
 const KB=[
+  {id:"summary",title:"사이트 요약",keys:["요약","사이트","전체","정리","결과가","무슨 사이트","뭐 하는"],text:KB_BASE},
   {id:"cars",title:"자동차 정지거리",keys:["정지거리","자동차","속도","브레이크","cars","진 이유","졌","이긴"],
    text:"자동차 정지거리(50대, 속도로 정지거리를 예측): 시험 데이터 10대에서 선형회귀 오차 11.26 ft, 신경망 오차 13.44 ft로 신경망이 19% 더 틀렸다. 학습 데이터 40대에서는 신경망 14.97 ft, 선형회귀 15.90 ft로 신경망이 더 잘 맞았다. 학습한 점에만 맞춰진 과적합 사례다. 같은 14 mph에서도 정지거리가 26~80 ft로 흩어져 있어서 곡선을 써도 줄일 오차가 없었다."},
   {id:"pressure",title:"수은 증기압",keys:["증기압","수은","온도","압력","pressure"],
@@ -277,10 +278,10 @@ const KB=[
 ];
 function pick(q){const s=String(q).toLowerCase();
   return KB.map(k=>({k,n:k.keys.reduce((a,w)=>a+(s.includes(w.toLowerCase())?1:0),0)})).filter(x=>x.n>0).sort((a,b)=>b.n-a.n).slice(0,3).map(x=>x.k);}
-function systemPrompt(chunks,useKb){
-  if(!useKb)return "너는 친절한 도우미다. 한국어로 짧고 분명하게 답한다. 모르는 것은 모른다고 말한다.";
-  return "너는 이 웹사이트의 안내 도우미다. 한국어로 짧고 분명하게 답한다. 아래 [자료]에 있는 내용과 숫자는 그대로 쓰고, 자료에 없는 숫자는 지어내지 않는다. 자료로 답할 수 없으면 모른다고 말한다.\n\n[자료]\n"+[KB_BASE].concat(chunks.map(c=>c.text)).join("\n");}
-
+const SYS="너는 이 웹사이트의 안내 도우미다. 자료에 있는 숫자만 쓰고, 없는 숫자는 지어내지 않는다.";
+/* 자료는 질문 바로 앞에 넣고, 옮겨 적지 말라고 시킨다. 작은 모델은 자료를 시스템 글에 넣으면 그대로 베껴 쓰는 일이 잦았다. */
+function userText(q,chunks){return (chunks.length?"[참고 자료]\n"+chunks.map(c=>c.text).join("\n")+"\n\n":"")+"[질문]\n"+q+"\n\n"+(chunks.length?"위 자료만 보고 질문에 한국어 2문장으로 답하세요. 자료를 옮겨 적지 마세요.":"한국어 2문장으로 답하세요.");}
+const STOPS=["[참고","[질문","자료:"];
 /* ── 상태와 화면 도구 ── */
 const $=id=>document.getElementById(id);
 const RM=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -289,7 +290,9 @@ const esc=t=>String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"
 const fmt=t=>esc(t).replace(/\*\*([^*\n]+)\*\*/g,"<b>$1</b>").replace(/`([^`\n]+)`/g,"<code>$1</code>");
 /* 모델이 내보내는 생각 과정(<think>…</think>)은 화면에서 뺀다 */
 function clean(raw){let t=String(raw).replace(/<think>[\s\S]*?<\/think>/g,"");const i=t.indexOf("<think>");
-  if(i>=0)return {text:t.slice(0,i).trim(),thinking:true};return {text:t.replace(/^\s+/,""),thinking:false};}
+  if(i>=0)return {text:t.slice(0,i).trim(),thinking:true};
+  t=t.replace(/<\/?(t|th|thi|thin|think)?$/,"");/* 태그가 반쯤 들어온 조각은 숨긴다 */
+  return {text:t.replace(/^\s+/,""),thinking:false};}
 const modelId=key=>`Qwen3.5-${key}-${S.f16?"q4f16_1":"q4f32_1"}-MLC`;
 function setStat(html,raw){$("pstat").innerHTML=html||"";$("praw").textContent=raw||"";}
 function setBar(p,done){$("pfill").style.width=Math.max(0,Math.min(1,p))*100+"%";$("pbar").classList.toggle("done",!!done);}
@@ -330,6 +333,11 @@ async function loadModel(){if(S.loading||S.busy||!S.gpu)return;const id=modelId(
     const appConfig={...lib.prebuiltAppConfig,model_list:list.map(patch)};
     if(S.engine){try{await S.engine.unload();}catch(_){ }S.engine=null;S.id=null;}
     S.engine=await lib.CreateMLCEngine(id,{appConfig,initProgressCallback:onProgress});
+    /* 첫 계산은 그래픽 카드가 계산 방법을 준비하느라 오래 걸린다(시험한 노트북에서 약 1분). 여기서 미리 한 번 해 둔다. */
+    const tw=performance.now(),wt=setInterval(()=>setStat(`<b>처음 계산을 준비하는 중</b> ${Math.round((performance.now()-tw)/1000)}초`,"첫 답이 늦어지지 않도록 미리 한 번 계산해 둡니다. 컴퓨터에 따라 1분 넘게 걸릴 수 있습니다."),1000);
+    setStat("<b>처음 계산을 준비하는 중</b>","첫 답이 늦어지지 않도록 미리 한 번 계산해 둡니다. 컴퓨터에 따라 1분 넘게 걸릴 수 있습니다.");
+    try{await S.engine.chat.completions.create({messages:[{role:"user",content:"안녕"}],max_tokens:2,extra_body:{enable_thinking:false}});}catch(_){ }finally{clearInterval(wt);}
+    try{await S.engine.resetChat();}catch(_){ }
     S.id=id;S.history=[];setBar(1,true);setStat(`<b>준비됐습니다.</b> Qwen3.5 ${S.sel}`);
     $("s-model").textContent=`Qwen3.5 ${S.sel}`;$("load").textContent="불러옴";$("unload").hidden=false;
     $("empty")&&($("empty").innerHTML="<b>무엇이든 물어보세요</b>아래 질문을 눌러 시작해도 됩니다. 사이트 결과를 물으면 관련 자료를 함께 넣어 답합니다.");
@@ -346,26 +354,28 @@ function lockChat(lock){const on=!lock&&!!S.engine;$("q").disabled=!on;$("send")
 /* ── 대화 ── */
 function addMsg(role,html){const e=$("empty");if(e)e.remove();const w=document.createElement("div");w.className="msg "+role;
   const b=document.createElement("div");b.className="bub";b.innerHTML=html;w.appendChild(b);$("msgs").appendChild(w);$("msgs").scrollTop=$("msgs").scrollHeight;return {w,b};}
-function buildMessages(q,chunks,useKb,withHistory){return [{role:"system",content:systemPrompt(chunks,useKb)}].concat(withHistory?S.history.slice(-4):[],[{role:"user",content:q}]);}
+function buildMessages(q,chunks,useKb,withHistory){return [{role:"system",content:SYS}].concat(withHistory?S.history.slice(-2):[],[{role:"user",content:userText(q,useKb?chunks:[])}]);}
 async function ask(q){q=String(q||"").trim();if(!q||S.busy||!S.engine)return;
   S.busy=true;$("q").value="";grow();$("send").hidden=true;$("stop").hidden=false;$("q").disabled=true;$("reset").disabled=true;
   document.querySelectorAll("#chips button").forEach(b=>b.disabled=true);
-  addMsg("user",esc(q));const useKb=$("useKb").checked,chunks=useKb?pick(q):[],{w,b}=addMsg("ai",'<span class="think">생각하는 중</span><span class="cursor"></span>');
+  addMsg("user",esc(q));const useKb=$("useKb").checked,chunks=useKb?pick(q):[],{w,b}=addMsg("ai",'<span class="think">질문을 읽는 중</span><span class="cursor"></span>');
   let raw="",usage=null,pieces=0,t0=performance.now(),failed=null,stopped=false;S.onStop=()=>{stopped=true;};
+  const tq=performance.now(),tick=setInterval(()=>{if(!raw){const t=b.querySelector(".think");if(t)t.textContent=`질문을 읽는 중 ${Math.round((performance.now()-tq)/1000)}초`;}},1000);
   const run=async withHistory=>{raw="";pieces=0;t0=performance.now();
-    const stream=await S.engine.chat.completions.create({messages:buildMessages(q,chunks,useKb,withHistory),stream:true,stream_options:{include_usage:true},temperature:0.7,top_p:0.8,max_tokens:512,extra_body:{enable_thinking:false}});
+    const stream=await S.engine.chat.completions.create({messages:buildMessages(q,chunks,useKb,withHistory),stream:true,stream_options:{include_usage:true},temperature:0.3,top_p:0.9,max_tokens:200,stop:STOPS,extra_body:{enable_thinking:false}});
     for await(const ch of stream){const d=ch.choices&&ch.choices[0]&&ch.choices[0].delta&&ch.choices[0].delta.content;if(d){raw+=d;pieces++;const c=clean(raw);
-        b.innerHTML=(c.text?fmt(c.text):(c.thinking?'<span class="think">생각하는 중</span>':""))+'<span class="cursor"></span>';$("msgs").scrollTop=$("msgs").scrollHeight;}
+        b.innerHTML=(c.text?fmt(c.text):'<span class="think">답을 준비하는 중</span>')+'<span class="cursor"></span>';$("msgs").scrollTop=$("msgs").scrollHeight;}
       if(ch.usage)usage=ch.usage;}};
   try{try{await run(true);}catch(e){if(/context|window|exceed|too long/i.test(String(e&&e.message))&&S.history.length){S.history=[];await run(false);}else throw e;}}
   catch(e){failed=e;console.error(e);}
+  clearInterval(tick);
   const c=clean(raw),secs=(performance.now()-t0)/1000;
   if(failed&&!c.text){b.className="bub err";b.textContent=/memory|lost|OOM/i.test(String(failed.message))?"그래픽 메모리가 모자라 답을 만들지 못했습니다. 더 작은 모델로 바꿔 주세요.":"답을 만들다가 문제가 생겼습니다. 다시 물어봐 주세요.";}
   else if(!c.text){b.className="bub err";b.textContent=stopped?"답이 나오기 전에 멈췄습니다.":c.thinking?"모델이 생각만 하다가 답을 내지 못했습니다. 다시 물어봐 주세요.":"답이 비어 있습니다. 다시 물어봐 주세요.";}
   else{const text=c.text;b.innerHTML=fmt(text)+(stopped?' <span class="think">(여기서 멈춤)</span>':"");
     S.history.push({role:"user",content:q},{role:"assistant",content:text});
     const m=document.createElement("div");m.className="meta";
-    m.innerHTML=(useKb?`<span>넣어 준 자료</span>`+[{title:"사이트 요약"}].concat(chunks).map(k=>`<span class="tag">${esc(k.title)}</span>`).join(""):`<span>자료 없이 답함</span>`);w.appendChild(m);
+    m.innerHTML=!useKb?`<span>자료 없이 답함</span>`:chunks.length?`<span>넣어 준 자료</span>`+chunks.map(k=>`<span class="tag">${esc(k.title)}</span>`).join(""):`<span>관련 자료를 찾지 못해 자료 없이 답함</span>`;w.appendChild(m);
     const ex=usage&&usage.extra||{},sp=ex.decode_tokens_per_s;
     $("s-speed").textContent=sp?`초당 ${sp.toFixed(1)}토큰`:(secs>0?`초당 약 ${(pieces/secs).toFixed(1)}조각`:"—");
     $("s-tok").textContent=usage&&usage.completion_tokens?`${usage.completion_tokens}토큰`:`${pieces}조각`;
@@ -407,7 +417,7 @@ $("q").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey&&!e.isComp
 if(RM||!("IntersectionObserver" in window))document.querySelectorAll(".rv").forEach(e=>e.classList.add("in"));
 else{const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target);}}),{rootMargin:"0px 0px -6% 0px"});document.querySelectorAll(".rv").forEach(e=>io.observe(e));}
 checkDevice();
-window.__chat={S,pick,buildMessages,clean,modelId,systemPrompt};
+window.__chat={S,pick,buildMessages,clean,modelId,userText};
 </script>
 </body>
 </html>
