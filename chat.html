@@ -214,7 +214,7 @@ footer a{color:var(--dink)}
    <div class="card hcard rv" style="--i:0"><div class="ill" data-ill="tok" aria-hidden="true"></div><h3><span class="n1">1</span>글을 토큰으로 자른다</h3><p>모델은 글자를 그대로 읽지 못한다. 문장을 토큰이라는 조각으로 자르고, 조각마다 번호를 붙여 숫자로 바꾼다. 인공신경망 페이지에서 속도나 온도를 숫자로 넣은 것과 같은 일이다.</p></div>
    <div class="card hcard rv" style="--i:1"><div class="ill" data-ill="prob" aria-hidden="true"></div><h3><span class="n1">2</span>다음 토큰의 확률을 계산한다</h3><p>지금까지의 토큰을 넣으면, 모델은 다음에 올 수 있는 모든 토큰에 점수를 매긴다. 이 점수를 Softmax 함수로 확률로 바꾼다. 숫자 하나를 내던 회귀용 신경망과 달리, 출력이 "후보마다의 확률"이다.</p></div>
    <div class="card hcard rv" style="--i:2"><div class="ill" data-ill="loop" aria-hidden="true"></div><h3><span class="n1">3</span>하나를 골라 붙이고, 다시 계산한다</h3><p>확률이 높은 토큰 가운데 하나를 골라 문장 끝에 붙인다. 그리고 늘어난 문장을 다시 넣어 그다음 토큰을 고른다. 답이 조금씩 나타나는 건 이 과정이 그대로 보이는 것이다.</p></div>
-   <div class="card hcard rv" style="--i:3"><div class="ill" data-ill="kb" aria-hidden="true"></div><h3><span class="n1">4</span>사이트 자료를 같이 넣어 준다</h3><p>작은 모델은 모르는 것도 아는 것처럼 지어내기 쉽다. 그래서 질문에 나온 낱말로 이 사이트의 결과 가운데 관련된 부분을 골라 질문 바로 앞에 붙이고, 자료를 옮겨 적지 말고 두 문장으로 답하라고 시킨다. 어떤 자료를 넣었는지는 답 아래에 표시된다.</p></div>
+   <div class="card hcard rv" style="--i:3"><div class="ill" data-ill="kb" aria-hidden="true"></div><h3><span class="n1">4</span>사이트 자료를 같이 넣어 준다</h3><p>작은 모델은 모르는 것도 아는 것처럼 지어내기 쉽다. 그래서 질문에 나온 낱말로 이 사이트의 결과 가운데 관련된 부분을 골라 질문 바로 앞에 붙이고, 자료를 옮겨 적지 말고 두 문장으로 답하라고 시킨다. 자료는 "누가 이겼나 → 숫자 → 이유" 순서로 써 두었다. 어떤 자료를 넣었는지는 답 아래에 표시된다.</p></div>
   </div>
   <div class="card rv" style="padding:20px 22px;--i:1">
    <h3 style="margin-bottom:12px">인공신경망 페이지의 신경망과 비교</h3>
@@ -256,32 +256,32 @@ const KB_BASE="이 사이트는 실측 데이터 6종(자동차 정지거리, �
 const KB=[
   {id:"summary",title:"사이트 요약",keys:["요약","사이트","전체","정리","결과가","무슨 사이트","뭐 하는"],text:KB_BASE},
   {id:"cars",title:"자동차 정지거리",keys:["정지거리","자동차","속도","브레이크","cars","진 이유","졌","이긴"],
-   text:"자동차 정지거리(50대, 속도로 정지거리를 예측): 시험 데이터 10대에서 선형회귀 오차 11.26 ft, 신경망 오차 13.44 ft로 신경망이 19% 더 틀렸다. 학습 데이터 40대에서는 신경망 14.97 ft, 선형회귀 15.90 ft로 신경망이 더 잘 맞았다. 학습한 점에만 맞춰진 과적합 사례다. 같은 14 mph에서도 정지거리가 26~80 ft로 흩어져 있어서 곡선을 써도 줄일 오차가 없었다."},
+   text:"자동차 정지거리: 신경망이 선형회귀에게 졌다. 처음 보는 시험 데이터 10대에서 신경망 오차는 13.44 ft, 선형회귀 오차는 11.26 ft였다. 진 이유는 같은 14 mph에서도 정지거리가 26~80 ft로 흩어져 있어서, 곡선을 써도 줄일 오차가 없었기 때문이다. 학습에 쓴 40대에서는 오히려 신경망이 더 잘 맞았다(신경망 14.97 ft, 선형회귀 15.90 ft). 학습한 점에만 맞춘 과적합이다."},
   {id:"pressure",title:"수은 증기압",keys:["증기압","수은","온도","압력","pressure"],
-   text:"수은 증기압(19개, 온도로 증기압을 예측): 증기압은 0℃에서 0.0002 mmHg, 360℃에서 806 mmHg로 약 400만 배 커진다. 선형회귀 오차 142.7 mmHg, 신경망 오차 4.371 mmHg로 97% 줄었다. 점이 19개뿐이라 시험 데이터를 따로 두지 않았고, 학습한 데이터에서 잰 오차다."},
+   text:"수은 증기압: 신경망이 이겼다. 신경망 오차는 4.371 mmHg로, 선형회귀 오차 142.7 mmHg보다 97% 작았다. 증기압이 0℃ 0.0002 mmHg에서 360℃ 806 mmHg로 약 400만 배 커지는 급한 곡선이라 직선으로는 맞출 수 없었다. 점이 19개뿐이라 시험 데이터는 따로 두지 않았다."},
   {id:"uspop",title:"미국 인구",keys:["인구","미국","연도","uspop"],
-   text:"미국 인구(19개, 연도로 인구를 예측): 선형회귀 오차 17.14백만 명, 신경망 오차 3.245백만 명으로 81% 줄었다. 1790~1820년과 1950~1970년에는 실제 인구가 직선보다 많고 그 사이는 적어서, 직선이 틀리는 방향이 일정했다. 그래서 곡선으로 메울 수 있었다."},
+   text:"미국 인구: 신경망이 이겼다. 신경망 오차는 3.245백만 명으로, 선형회귀 오차 17.14백만 명보다 81% 작았다. 직선이 틀리는 방향이 일정해서(1790~1820년과 1950~1970년에는 실제가 직선보다 많음) 곡선으로 메울 수 있었다."},
   {id:"puromycin",title:"효소 반응속도",keys:["효소","반응속도","기질","농도","포화","puromycin"],
-   text:"효소 반응속도(12개, 기질 농도로 반응속도를 예측): 선형회귀 오차 28.21, 신경망 오차 8.515로 70% 줄었다. 농도가 0.56 ppm을 넘으면 반응속도가 거의 오르지 않는 포화 곡선이다. 점이 12개뿐이라 은닉 뉴런을 3개로 줄였다."},
+   text:"효소 반응속도: 신경망이 이겼다. 신경망 오차는 8.515로, 선형회귀 오차 28.21보다 70% 작았다. 농도가 0.56 ppm을 넘으면 반응속도가 거의 오르지 않는 포화 곡선이다. 점이 12개뿐이라 은닉 뉴런을 3개로 줄였다."},
   {id:"loblolly",title:"테다소나무 성장",keys:["소나무","나무","테다","성장","높이","나이","loblolly"],
-   text:"테다소나무 성장(84그루, 나무 나이로 높이를 예측): 시험 데이터 17그루에서 선형회귀 오차 3.719 ft, 신경망 오차 2.012 ft로 46% 줄었다. 은닉 뉴런을 1개만 써도 2.064 ft로 선형회귀보다 나았다."},
+   text:"테다소나무 성장: 신경망이 이겼다. 처음 보는 시험 데이터 17그루에서 신경망 오차는 2.012 ft로, 선형회귀 오차 3.719 ft보다 46% 작았다. 나무가 자랄수록 크는 속도가 줄어드는 곡선이라 신경망이 더 잘 맞혔다."},
   {id:"mpg",title:"차량 연비",keys:["연비","공차중량","중량","마력","배기량","입력 수","mpg"],
-   text:"차량 연비(392대, 공차중량·마력·배기량으로 연비를 예측): 시험 데이터 78대에서 선형회귀 오차 3.689 mpg, 신경망 오차 3.121 mpg로 15% 줄었다. 입력을 공차중량 하나만 쓰면 6%, 6개를 모두 쓰면 22% 줄었다. 입력이 많을수록 신경망 쪽이 유리했다."},
+   text:"차량 연비: 신경망이 이겼다. 처음 보는 시험 데이터 78대에서 신경망 오차는 3.121 mpg로, 선형회귀 오차 3.689 mpg보다 15% 작았다. 입력은 공차중량, 마력, 배기량 3개였다. 입력을 6개로 늘리면 차이가 22%로 커졌다."},
   {id:"overfit",title:"과적합과 데이터 나누기",keys:["과적합","외우","시험 데이터","학습 데이터","나누","분할","일반화","뉴런 수","overfit"],
-   text:"과적합은 학습한 데이터에는 잘 맞지만 처음 보는 데이터에서는 틀리는 현상이다. 이를 확인하려고 점이 30개 이상인 데이터는 80%로 학습하고 20%로 시험했다. 자동차 정지거리가 과적합 사례다. 학습 데이터에서는 신경망이 이겼지만 시험 데이터에서는 졌다. 은닉 뉴런을 1개부터 8개까지 바꿔도 정지거리는 항상 선형회귀보다 못했다."},
+   text:"과적합: 학습한 데이터에는 잘 맞지만 처음 보는 데이터에서는 틀리는 현상이다. 이것을 확인하려고 점이 30개 이상인 데이터는 80%로 학습하고 나머지 20%로 시험했다. 예를 들어 자동차 정지거리에서는 학습 데이터에서는 신경망이 이겼지만 시험 데이터에서는 졌다."},
   {id:"method",title:"계산 방법",keys:["rmse","오차","계산","방법","표준화","학습률","경사하강","시그모이드","조정","r²","r2","은닉","뉴런"],
-   text:"계산 방법: 신경망은 입력층, 은닉층 1개(시그모이드), 출력층으로 되어 있다. 은닉 뉴런은 4개(효소 반응속도만 3개), 경사하강법 3,000번, 학습률 0.3이다. 입력과 출력은 평균 0, 표준편차 1로 표준화했다. 오차 RMSE는 실제값과 예측값의 차이를 제곱해 평균을 내고 제곱근을 씌운 값이다. 조정 R²는 1 − (1 − R²)(n − 1)/(n − p)로, n은 점 개수, p는 정해야 할 값의 개수다."},
+   text:"계산 방법: RMSE는 네 단계로 계산한다. 1) 실제값과 예측값의 차이를 구한다. 2) 그 차이를 제곱한다. 3) 제곱한 값들의 평균을 낸다. 4) 평균에 제곱근을 씌운다. 신경망은 은닉층 1개(뉴런 4개, 시그모이드)이고, 경사하강법으로 3,000번, 학습률 0.3으로 학습했다. 조정 R²는 1 − (1 − R²)(n − 1)/(n − p)이다."},
   {id:"regression",title:"회귀분석 페이지",keys:["회귀","직선","최소제곱","다항식","지수","거듭제곱","로지스틱","로그","기울기","절편"],
-   text:"회귀분석 페이지: 선형 모드는 직선 y = ax + b를 최소제곱법과 경사하강법으로 각각 구한다. 자동차 정지거리에서는 a = 3.9324, b = −17.579가 나왔다. 비선형 모드는 다항식, 지수, 거듭제곱, 로그, 포화, 로지스틱, 인공신경망을 맞추고 조정 R²로 비교한다. 자동차 정지거리에서는 거듭제곱 모형의 조정 R²가 0.6584로 가장 높았다."},
+   text:"회귀분석 페이지: 직선 y = ax + b를 최소제곱법과 경사하강법으로 구한다. 자동차 정지거리에서는 a = 3.9324, b = −17.579였다. 곡선(다항식, 지수, 거듭제곱, 로그, 포화, 로지스틱)도 맞춰 보고 조정 R²로 비교한다. 자동차 정지거리에서는 거듭제곱 모형이 조정 R² 0.6584로 가장 좋았다."},
   {id:"llm",title:"이 대화 페이지",keys:["너는","넌 ","누구","llm","qwen","모델","토큰","webllm","webgpu","브라우저","소개","어떻게 답"],
-   text:"이 대화 페이지: 오픈소스 언어 모델 Qwen3.5(알리바바, Apache 2.0)를 WebLLM으로 브라우저 안에서 돌린다. 서버 없이 이 컴퓨터의 그래픽 카드(WebGPU)로 계산한다. 언어 모델은 다음에 올 토큰의 확률을 계산해 하나씩 이어 붙여 문장을 만든다."}
+   text:"자기소개: 저는 이 사이트의 안내 도우미입니다. 오픈소스 언어 모델 Qwen3.5로 움직이고, 서버 없이 이 컴퓨터의 그래픽 카드로 계산합니다. 질문과 답은 브라우저 밖으로 나가지 않습니다. 회귀분석과 인공신경망 결과를 물어보면 답해 드립니다."}
 ];
 function pick(q){const s=String(q).toLowerCase();
   return KB.map(k=>({k,n:k.keys.reduce((a,w)=>a+(s.includes(w.toLowerCase())?1:0),0)})).filter(x=>x.n>0).sort((a,b)=>b.n-a.n).slice(0,3).map(x=>x.k);}
-const SYS="너는 이 웹사이트의 안내 도우미다. 자료에 있는 숫자만 쓰고, 없는 숫자는 지어내지 않는다.";
+const SYS="이 대화에서 당신은 웹사이트 안내 도우미입니다. 자료에 있는 숫자만 쓰고, 없는 숫자는 지어내지 마세요. 존댓말로 답하세요.";
 /* 자료는 질문 바로 앞에 넣고, 옮겨 적지 말라고 시킨다. 작은 모델은 자료를 시스템 글에 넣으면 그대로 베껴 쓰는 일이 잦았다. */
 function userText(q,chunks){return (chunks.length?"[참고 자료]\n"+chunks.map(c=>c.text).join("\n")+"\n\n":"")+"[질문]\n"+q+"\n\n"+(chunks.length?"위 자료만 보고 질문에 한국어 2문장으로 답하세요. 자료를 옮겨 적지 마세요.":"한국어 2문장으로 답하세요.");}
-const STOPS=["[참고","[질문","자료:"];
+const STOPS=["[참고","[질문","자료:","\n\n답:"];
 /* ── 상태와 화면 도구 ── */
 const $=id=>document.getElementById(id);
 const RM=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -291,7 +291,7 @@ const fmt=t=>esc(t).replace(/\*\*([^*\n]+)\*\*/g,"<b>$1</b>").replace(/`([^`\n]+
 /* 모델이 내보내는 생각 과정(<think>…</think>)은 화면에서 뺀다 */
 function clean(raw){let t=String(raw).replace(/<think>[\s\S]*?<\/think>/g,"");const i=t.indexOf("<think>");
   if(i>=0)return {text:t.slice(0,i).trim(),thinking:true};
-  t=t.replace(/<\/?(t|th|thi|thin|think)?$/,"");/* 태그가 반쯤 들어온 조각은 숨긴다 */
+  t=t.replace(/<\/?(t|th|thi|thin|think)?$/,"").replace(/^\s*답\s*:\s*/,"").split(/\n\s*답\s*:/)[0];/* 태그가 반쯤 들어온 조각은 숨긴다 */
   return {text:t.replace(/^\s+/,""),thinking:false};}
 const modelId=key=>`Qwen3.5-${key}-${S.f16?"q4f16_1":"q4f32_1"}-MLC`;
 function setStat(html,raw){$("pstat").innerHTML=html||"";$("praw").textContent=raw||"";}
@@ -354,7 +354,7 @@ function lockChat(lock){const on=!lock&&!!S.engine;$("q").disabled=!on;$("send")
 /* ── 대화 ── */
 function addMsg(role,html){const e=$("empty");if(e)e.remove();const w=document.createElement("div");w.className="msg "+role;
   const b=document.createElement("div");b.className="bub";b.innerHTML=html;w.appendChild(b);$("msgs").appendChild(w);$("msgs").scrollTop=$("msgs").scrollHeight;return {w,b};}
-function buildMessages(q,chunks,useKb,withHistory){return [{role:"system",content:SYS}].concat(withHistory?S.history.slice(-2):[],[{role:"user",content:userText(q,useKb?chunks:[])}]);}
+function buildMessages(q,chunks,useKb){return [{role:"system",content:SYS},{role:"user",content:userText(q,useKb?chunks:[])}];}
 async function ask(q){q=String(q||"").trim();if(!q||S.busy||!S.engine)return;
   S.busy=true;$("q").value="";grow();$("send").hidden=true;$("stop").hidden=false;$("q").disabled=true;$("reset").disabled=true;
   document.querySelectorAll("#chips button").forEach(b=>b.disabled=true);
@@ -362,7 +362,7 @@ async function ask(q){q=String(q||"").trim();if(!q||S.busy||!S.engine)return;
   let raw="",usage=null,pieces=0,t0=performance.now(),failed=null,stopped=false;S.onStop=()=>{stopped=true;};
   const tq=performance.now(),tick=setInterval(()=>{if(!raw){const t=b.querySelector(".think");if(t)t.textContent=`질문을 읽는 중 ${Math.round((performance.now()-tq)/1000)}초`;}},1000);
   const run=async withHistory=>{raw="";pieces=0;t0=performance.now();
-    const stream=await S.engine.chat.completions.create({messages:buildMessages(q,chunks,useKb,withHistory),stream:true,stream_options:{include_usage:true},temperature:0.3,top_p:0.9,max_tokens:200,stop:STOPS,extra_body:{enable_thinking:false}});
+    const stream=await S.engine.chat.completions.create({messages:buildMessages(q,chunks,useKb,withHistory),stream:true,stream_options:{include_usage:true},temperature:0,max_tokens:200,stop:STOPS,extra_body:{enable_thinking:false}});
     for await(const ch of stream){const d=ch.choices&&ch.choices[0]&&ch.choices[0].delta&&ch.choices[0].delta.content;if(d){raw+=d;pieces++;const c=clean(raw);
         b.innerHTML=(c.text?fmt(c.text):'<span class="think">답을 준비하는 중</span>')+'<span class="cursor"></span>';$("msgs").scrollTop=$("msgs").scrollHeight;}
       if(ch.usage)usage=ch.usage;}};
