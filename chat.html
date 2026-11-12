@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>작은 LLM과 대화가 될까</title>
+<meta name="description" content="오픈소스 언어 모델 Qwen3.5를 브라우저 안에서 돌려 대화해 보는 페이지. 서버 없이 이 컴퓨터의 그래픽 카드로 답을 만든다.">
+<meta property="og:title" content="작은 LLM과 대화가 될까">
+<meta name="theme-color" content="#10232D">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2310232D'/%3E%3Cpath d='M7 9h18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H15l-5 4v-4H7a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z' fill='none' stroke='%234FBDD4' stroke-width='1.8' stroke-linejoin='round'/%3E%3Ccircle cx='11.5' cy='15.5' r='1.5' fill='%23E4EBED'/%3E%3Ccircle cx='16' cy='15.5' r='1.5' fill='%23E4EBED'/%3E%3Ccircle cx='20.5' cy='15.5' r='1.5' fill='%23FF5A4D'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F2F4F3;--sunk:#E8ECEB;--raise:#FFFFFF;--ink:#14202A;--soft:#52636D;--faint:#7E8E97;
+  --rule:#C6CFD1;--fine:#DDE3E3;--fit:#D62828;--neg:#C2187E;--pos:#0E6A7D;--wash:#DCE9EC;--warn:#A8410E;--warnbg:#F8EADF;
+  --deep:#10232D;--deep2:#163240;--dink:#E4EBED;--dsoft:#A3B4BC;--dline:#2C4350;--dfit:#FF5A4D;--dpos:#4FBDD4;
+  --focus:#0E6A7D;--ease:cubic-bezier(.4,0,.2,1);--out:cubic-bezier(.2,.75,.25,1);--wrap:1240px;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans KR","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;font-size:16px;line-height:1.7;-webkit-font-smoothing:antialiased;word-break:keep-all;overflow-wrap:break-word}
+.num{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+a{color:inherit}
+.wrap{max-width:var(--wrap);margin:0 auto;padding:0 32px}
+[hidden]{display:none!important}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.top :focus-visible,.bar :focus-visible{outline-color:var(--dpos)}
+p{margin:0 0 10px}
+h3{font-size:1.05rem;margin:0 0 6px;font-weight:600;line-height:1.45;letter-spacing:-.01em}
+/* 위쪽 막대 */
+.bar{position:sticky;top:0;z-index:30;background:var(--deep);color:var(--dink);border-bottom:1px solid var(--dline)}
+.barin{max-width:var(--wrap);margin:0 auto;padding:0 32px;height:62px;display:flex;align-items:center;gap:12px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:600;white-space:nowrap;color:var(--dink);text-decoration:none;margin-right:auto}
+.brand svg{width:26px;height:26px}
+.tolink{color:var(--dink);text-decoration:none;font-size:.86rem;border:1px solid var(--dline);border-radius:4px;padding:7px 13px;white-space:nowrap;transition:border-color .2s,background .2s}
+.tolink:hover{border-color:var(--dink);background:var(--deep2)}
+/* 첫 화면 띠 */
+.top{background:var(--deep);color:var(--dink);padding:40px 0 56px;position:relative;overflow:hidden}
+.top::before{content:"";position:absolute;inset:0;background-image:linear-gradient(var(--dline) 1px,transparent 1px),linear-gradient(90deg,var(--dline) 1px,transparent 1px);background-size:40px 40px;opacity:.3;-webkit-mask-image:linear-gradient(180deg,#000 30%,transparent);mask-image:linear-gradient(180deg,#000 30%,transparent)}
+.topgrid{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:56px;align-items:start}
+.kick{color:var(--dsoft);font-size:.95rem;margin:14px 0 14px}
+.top h1{font-size:clamp(2rem,3.6vw,2.9rem);line-height:1.25;letter-spacing:-.025em;font-weight:600;margin:0 0 18px}
+.lede{color:var(--dsoft);font-size:1.06rem;margin:0 0 20px;max-width:32em}
+.facts{display:grid;gap:8px;margin:0;padding:0;list-style:none;font-size:.92rem;color:var(--dsoft)}
+.facts li{display:flex;gap:10px;align-items:baseline}
+.facts b{color:var(--dink);font-weight:600;min-width:5.2em}
+/* 모델 고르기 칸 */
+.mpanel{background:var(--deep2);border:1px solid var(--dline);border-radius:10px;padding:20px 22px}
+.mpanel h2{font-size:1rem;margin:0 0 4px;font-weight:600}
+.dev{font-size:.84rem;color:var(--dsoft);margin:0 0 14px;min-height:1.5em}
+.dev.bad{color:#FFB4A8}
+.mopts{display:grid;gap:8px;margin:0 0 14px}
+.mopt{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 12px;align-items:center;border:1px solid var(--dline);border-radius:7px;padding:10px 12px;cursor:pointer;transition:border-color .2s,background .2s}
+.mopt:hover{border-color:var(--dsoft)}
+.mopt:has(input:checked){border-color:var(--dpos);background:rgba(79,189,212,.09)}
+.mopt input{accent-color:var(--dpos);margin:0;width:16px;height:16px}
+.mopt .nm{font-weight:600;font-size:.95rem}
+.mopt .nm small{font-weight:400;color:var(--dsoft);font-size:.8rem;margin-left:8px}
+.mopt .mem{font-size:.82rem;color:var(--dsoft);white-space:nowrap}
+.loadrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.btn{appearance:none;display:inline-flex;align-items:center;justify-content:center;font:inherit;font-size:.9rem;font-weight:500;min-height:44px;padding:0 18px;border-radius:5px;border:1px solid var(--rule);background:var(--raise);color:var(--ink);cursor:pointer;transition:transform .15s var(--ease),border-color .2s,opacity .2s,background .2s}
+.btn:hover{border-color:var(--ink)}.btn:active{transform:scale(.97)}
+.btn.main{background:var(--ink);border-color:var(--ink);color:#fff}.btn.main:hover{opacity:.9}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.mpanel .btn.main{background:var(--dink);border-color:var(--dink);color:var(--deep)}
+.mpanel .btn.ghost{background:transparent;border-color:var(--dline);color:var(--dink)}
+.pbar{height:6px;background:var(--dline);border-radius:3px;overflow:hidden;margin:14px 0 8px}
+.pbar i{display:block;height:100%;width:0;background:var(--dfit);transition:width .25s linear}
+.pbar.done i{background:var(--dpos)}
+.pstat{font-size:.84rem;color:var(--dsoft);margin:0;min-height:1.5em}
+.pstat b{color:var(--dink);font-weight:600}
+.praw{font-size:.74rem;color:#7F939C;margin:2px 0 0;min-height:1.2em;overflow-wrap:anywhere}
+.mnote{font-size:.8rem;color:var(--dsoft);margin:12px 0 0;line-height:1.6}
+/* 대화 */
+.chatgrid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;align-items:start;margin:-28px 0 56px;position:relative}
+.card{background:var(--raise);border:1px solid var(--fine);border-radius:10px}
+.chat{display:flex;flex-direction:column;min-height:520px}
+.msgs{flex:1;padding:22px 22px 8px;display:flex;flex-direction:column;gap:14px;min-height:320px;max-height:62vh;overflow-y:auto;scroll-behavior:smooth}
+.empty{margin:auto;text-align:center;color:var(--soft);max-width:30em;padding:24px 0}
+.empty b{display:block;color:var(--ink);font-size:1.05rem;margin-bottom:6px;font-weight:600}
+.msg{max-width:86%;display:flex;flex-direction:column;gap:6px}
+.msg.user{align-self:flex-end;align-items:flex-end}
+.bub{padding:11px 15px;border-radius:12px;font-size:.97rem;line-height:1.7;white-space:pre-wrap}
+.msg.user .bub{background:var(--ink);color:#fff;border-bottom-right-radius:4px}
+.msg.ai .bub{background:var(--sunk);color:var(--ink);border-bottom-left-radius:4px}
+.msg.ai .bub.err{background:var(--warnbg);color:var(--warn)}
+.bub b{font-weight:600}
+.bub code{font-family:"IBM Plex Mono",monospace;font-size:.88em;background:rgba(20,32,42,.08);padding:1px 5px;border-radius:3px}
+.cursor{display:inline-block;width:8px;height:1.05em;background:var(--fit);vertical-align:-2px;margin-left:2px;border-radius:1px}
+.think{color:var(--soft);font-style:normal}
+.meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:.76rem;color:var(--soft)}
+.meta .tag{background:var(--wash);color:var(--pos);border-radius:999px;padding:2px 9px;font-weight:500}
+.chips{display:flex;flex-wrap:wrap;gap:6px;padding:6px 22px 12px}
+.chips button{appearance:none;font:inherit;font-size:.84rem;padding:7px 13px;min-height:36px;border-radius:999px;border:1px solid var(--rule);background:var(--raise);color:var(--ink);cursor:pointer;transition:border-color .2s,background .2s}
+.chips button:hover:not(:disabled){border-color:var(--ink)}
+.chips button:disabled{opacity:.45;cursor:not-allowed}
+.inrow{display:flex;gap:10px;padding:14px 22px 20px;border-top:1px solid var(--fine);align-items:flex-end}
+textarea{flex:1;min-height:46px;max-height:140px;resize:none;font:inherit;font-size:.97rem;line-height:1.55;background:var(--sunk);color:var(--ink);border:1px solid var(--rule);border-radius:7px;padding:10px 13px}
+textarea:focus{outline:none;border-color:var(--focus);box-shadow:0 0 0 3px color-mix(in srgb,var(--focus) 22%,transparent)}
+textarea:disabled{opacity:.6}
+.side{padding:20px 22px;display:grid;gap:18px}
+.side h3{font-size:.92rem;margin:0 0 8px}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 14px;margin:0;font-size:.88rem}
+.kv dt{color:var(--soft)}.kv dd{margin:0;text-align:right;font-weight:500}
+.sw{display:flex;gap:10px;align-items:flex-start;font-size:.88rem;cursor:pointer}
+.sw input{accent-color:var(--pos);margin:5px 0 0;width:16px;height:16px;flex:none}
+.sw small{display:block;color:var(--soft);font-size:.8rem;line-height:1.55;margin-top:2px}
+.caution{font-size:.82rem;color:var(--soft);line-height:1.6;border-left:3px solid var(--rule);padding-left:12px;margin:0}
+/* 설명 */
+.how{margin:0 0 56px}
+.vhead h2{font-size:1.75rem;letter-spacing:-.02em;margin:0;font-weight:600;line-height:1.3}
+.vhead p{margin:6px 0 22px;color:var(--soft);max-width:46em}
+.hgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:24px}
+.hcard{padding:18px 20px}
+.hcard p{font-size:.93rem;color:var(--soft);margin:0;line-height:1.7}
+.ill{margin:0 0 12px}.ill svg{display:block;width:100%;height:auto}
+.n1{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--ink);color:#fff;font-size:.78rem;font-weight:600;margin-right:9px;vertical-align:1px}
+.cmp{width:100%;border-collapse:collapse;font-size:.92rem}
+.cmp th{font-size:.8rem;font-weight:500;color:var(--soft);text-align:left;padding:0 12px 10px;border-bottom:1px solid var(--ink)}
+.cmp td{padding:12px;border-bottom:1px solid var(--fine);vertical-align:top}
+.cmp th:first-child,.cmp td:first-child{padding-left:0;color:var(--soft);white-space:nowrap}
+.scroll{overflow-x:auto;position:relative}
+footer{background:var(--deep);color:var(--dsoft);font-size:.82rem;line-height:1.75;padding:28px 0 34px}
+footer b{color:var(--dink);font-weight:600}
+footer a{color:var(--dink)}
+.fgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:40px}
+@media (prefers-reduced-motion:no-preference){
+  .rise>*{animation:rise .55s var(--out) both}
+  .rise>*:nth-child(2){animation-delay:.07s}.rise>*:nth-child(3){animation-delay:.14s}.rise>*:nth-child(4){animation-delay:.21s}
+  .mpanel{animation:rise .6s var(--out) .15s both}
+  .msg{animation:rise .35s var(--out) both}
+  .cursor{animation:blink 1s steps(2) infinite}
+  .rv{opacity:0;transform:translateY(22px);transition:opacity .7s var(--out),transform .7s var(--out);transition-delay:calc(var(--i,0)*70ms)}
+  .rv.in{opacity:1;transform:none}
+}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes blink{50%{opacity:0}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+@media (max-width:980px){.topgrid,.chatgrid,.fgrid{grid-template-columns:1fr}.hgrid{grid-template-columns:1fr}.barin,.wrap{padding:0 18px}.tolink{padding:6px 9px;font-size:.8rem}}
+</style>
+</head>
+<body>
+<header class="bar">
+ <div class="barin">
+  <a class="brand" href="#top"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 9h18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H15l-5 4v-4H7a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z" fill="none" stroke="#4FBDD4" stroke-width="1.8" stroke-linejoin="round"/><circle cx="11.5" cy="15.5" r="1.5" fill="#E4EBED"/><circle cx="16" cy="15.5" r="1.5" fill="#E4EBED"/><circle cx="20.5" cy="15.5" r="1.5" fill="#FF5A4D"/></svg>AI 대화</a>
+  <a class="tolink" href="https://hwangjunkr.github.io/regression/">회귀분석 보기</a>
+  <a class="tolink" href="https://hwangjunkr.github.io/regression/neural-network.html">인공신경망 보기</a>
+ </div>
+</header>
+
+<section class="top" id="top">
+ <div class="wrap topgrid">
+  <div class="rise">
+   <p class="kick">오픈소스 언어 모델을 이 브라우저 안에서 직접 돌린다</p>
+   <h1>작은 LLM과<br>대화가 될까</h1>
+   <p class="lede">Qwen3.5를 이 컴퓨터에 내려받아, 서버 없이 그래픽 카드로 답을 만든다. 회귀분석과 인공신경망 페이지의 결과를 물어보면, 그 자료를 참고해서 답한다.</p>
+   <ul class="facts">
+    <li><b>모델</b><span>Qwen3.5 (알리바바, Apache 2.0)</span></li>
+    <li><b>실행 도구</b><span>WebLLM 0.2.86 (Apache 2.0), WebGPU 사용</span></li>
+    <li><b>보내는 곳</b><span>없음. 질문과 답은 이 브라우저 밖으로 나가지 않는다</span></li>
+   </ul>
+  </div>
+  <div class="mpanel" aria-labelledby="mp-h">
+   <h2 id="mp-h">모델 고르기</h2>
+   <p class="dev" id="dev">이 컴퓨터에서 돌릴 수 있는지 확인하고 있습니다.</p>
+   <div class="mopts" id="mopts" role="radiogroup" aria-label="모델 크기"></div>
+   <div class="loadrow">
+    <button class="btn main" id="load" type="button" disabled>모델 불러오기</button>
+    <button class="btn ghost" id="unload" type="button" hidden>내리기</button>
+   </div>
+   <div class="pbar" id="pbar" aria-hidden="true"><i id="pfill"></i></div>
+   <p class="pstat" id="pstat" role="status" aria-live="polite"></p>
+   <p class="praw num" id="praw"></p>
+   <p class="mnote">처음 한 번만 모델 파일을 내려받습니다(가장 작은 모델도 수백 MB). 다음부터는 브라우저에 저장된 것을 써서 금방 열립니다. 모델이 클수록 답은 낫지만 그래픽 메모리가 더 필요합니다.</p>
+  </div>
+ </div>
+</section>
+
+<main class="wrap">
+ <div class="chatgrid">
+  <div class="card chat">
+   <div class="msgs" id="msgs" aria-live="polite"><div class="empty" id="empty"><b>위에서 모델을 먼저 불러와 주세요</b>모델이 준비되면 여기서 대화할 수 있습니다. 아래 질문을 눌러 시작해도 됩니다.</div></div>
+   <div class="chips" id="chips"></div>
+   <div class="inrow">
+    <label class="sr" for="q">질문</label>
+    <textarea id="q" rows="1" placeholder="모델을 불러오면 질문할 수 있습니다" disabled></textarea>
+    <button class="btn main" id="send" type="button" disabled>보내기</button>
+    <button class="btn" id="stop" type="button" hidden>멈춤</button>
+   </div>
+  </div>
+  <aside class="card side">
+   <div>
+    <h3>지금 상태</h3>
+    <dl class="kv">
+     <dt>모델</dt><dd id="s-model">불러오지 않음</dd>
+     <dt>답하는 속도</dt><dd class="num" id="s-speed">—</dd>
+     <dt>마지막 답 길이</dt><dd class="num" id="s-tok">—</dd>
+     <dt>넣어 준 글 길이</dt><dd class="num" id="s-in">—</dd>
+    </dl>
+   </div>
+   <label class="sw"><input type="checkbox" id="useKb" checked><span>사이트 자료를 참고해서 답하기<small>질문과 관련된 결과를 골라 모델에 함께 넣어 줍니다. 끄면 모델이 아는 것만으로 답합니다.</small></span></label>
+   <button class="btn" id="reset" type="button" disabled>대화 지우기</button>
+   <p class="caution">작은 모델이라 틀린 답이 나올 수 있습니다. 숫자는 회귀분석, 인공신경망 페이지에서 직접 확인하는 것이 정확합니다.</p>
+  </aside>
+ </div>
+
+ <section class="how">
+  <div class="vhead"><h2>어떻게 답을 만드나</h2><p>인공신경망 페이지의 신경망과 원리는 같다. 가중치를 곱해 더하고, 활성화 함수를 거친다. 크기와 출력만 다르다.</p></div>
+  <div class="hgrid">
+   <div class="card hcard rv" style="--i:0"><div class="ill" data-ill="tok" aria-hidden="true"></div><h3><span class="n1">1</span>글을 토큰으로 자른다</h3><p>모델은 글자를 그대로 읽지 못한다. 문장을 토큰이라는 조각으로 자르고, 조각마다 번호를 붙여 숫자로 바꾼다. 인공신경망 페이지에서 속도나 온도를 숫자로 넣은 것과 같은 일이다.</p></div>
+   <div class="card hcard rv" style="--i:1"><div class="ill" data-ill="prob" aria-hidden="true"></div><h3><span class="n1">2</span>다음 토큰의 확률을 계산한다</h3><p>지금까지의 토큰을 넣으면, 모델은 다음에 올 수 있는 모든 토큰에 점수를 매긴다. 이 점수를 Softmax 함수로 확률로 바꾼다. 숫자 하나를 내던 회귀용 신경망과 달리, 출력이 "후보마다의 확률"이다.</p></div>
+   <div class="card hcard rv" style="--i:2"><div class="ill" data-ill="loop" aria-hidden="true"></div><h3><span class="n1">3</span>하나를 골라 붙이고, 다시 계산한다</h3><p>확률이 높은 토큰 가운데 하나를 골라 문장 끝에 붙인다. 그리고 늘어난 문장을 다시 넣어 그다음 토큰을 고른다. 답이 조금씩 나타나는 건 이 과정이 그대로 보이는 것이다.</p></div>
+   <div class="card hcard rv" style="--i:3"><div class="ill" data-ill="kb" aria-hidden="true"></div><h3><span class="n1">4</span>사이트 자료를 같이 넣어 준다</h3><p>작은 모델은 모르는 것도 아는 것처럼 지어내기 쉽다. 그래서 질문에 나온 낱말로 이 사이트의 결과 가운데 관련된 부분을 골라, 질문과 함께 모델에 넣는다. 어떤 자료를 넣었는지는 답 아래에 표시된다.</p></div>
+  </div>
+  <div class="card rv" style="padding:20px 22px;--i:1">
+   <h3 style="margin-bottom:12px">인공신경망 페이지의 신경망과 비교</h3>
+   <div class="scroll"><table class="cmp">
+    <thead><tr><th></th><th>인공신경망 페이지의 신경망</th><th>이 페이지의 언어 모델 (Qwen3.5 0.8B)</th></tr></thead>
+    <tbody>
+     <tr><td>학습으로 정하는 값</td><td>13~21개</td><td>약 8억 개</td></tr>
+     <tr><td>학습</td><td>브라우저에서 3,000번 직접 한다</td><td>이미 끝난 것을 내려받는다. 여기서는 계산만 한다</td></tr>
+     <tr><td>입력</td><td>숫자 1~3개 (속도, 온도 등)</td><td>토큰 수백~수천 개 (한 번에 최대 4,096개)</td></tr>
+     <tr><td>출력</td><td>숫자 하나 (예측값)</td><td>다음 토큰 후보마다의 확률</td></tr>
+     <tr><td>층</td><td>은닉층 1개</td><td>여러 층을 깊게 쌓은 신경망</td></tr>
+     <tr><td>계산하는 곳</td><td>CPU로 충분</td><td>그래픽 카드 (WebGPU)</td></tr>
+    </tbody>
+   </table></div>
+  </div>
+ </section>
+</main>
+<footer>
+ <div class="wrap fgrid">
+  <div><p><b>AI 대화</b></p><p><a href="https://hwangjunkr.github.io/regression/">회귀분석 보기</a><br><a href="https://hwangjunkr.github.io/regression/neural-network.html">인공신경망 보기</a></p></div>
+  <div><p><b>쓴 것</b></p><p>언어 모델: Qwen3.5 (Alibaba Qwen 팀, Apache 2.0). 실행 도구: <a href="https://github.com/mlc-ai/web-llm">WebLLM</a> 0.2.86 (MLC, Apache 2.0). 모델 파일은 Hugging Face의 mlc-ai 저장소에서 내려받는다. 모델별 필요 그래픽 메모리는 WebLLM 설정값, 지능 지수는 Artificial Analysis(2026년 3월) 발표값이다.</p></div>
+ </div>
+</footer>
+<script type="module">
+/* ── 설정 ── */
+const CDN="https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.86/+esm";
+/* Qwen3.5의 "여기서 멈춤" 토큰. WebLLM 0.2.87에서 추가된 설정을 0.2.86에 그대로 넣는다. */
+const STOP_IDS=[248046,248044];
+const MODELS=[
+  {key:"0.8B",tag:"가벼움",mem:"약 1.6GB",iq:9},
+  {key:"2B",tag:"균형",mem:"약 2.2GB",iq:16},
+  {key:"4B",tag:"고품질",mem:"약 3.9GB",iq:27},
+  {key:"9B",tag:"가장 큼",mem:"약 6.4GB",iq:32}
+];
+const CHIPS=["안녕, 넌 누구야?","신경망이 정지거리에서 진 이유는?","증기압 결과를 설명해 줘","과적합이 뭐야?","RMSE는 어떻게 계산해?"];
+
+/* ── 사이트 자료: 질문에 나온 낱말로 관련된 것만 골라 모델에 넣는다 ── */
+const KB_BASE="이 사이트는 실측 데이터 6종(자동차 정지거리, 수은 증기압, 미국 인구, 효소 반응속도, 테다소나무 성장, 차량 연비)에 회귀분석과 인공신경망을 적용한 결과를 보여 준다. 인공신경망(은닉층 1개, 은닉 뉴런 4개)과 선형회귀의 오차(RMSE)를 비교했더니 6개 중 5개에서 신경망 오차가 더 작았고, 자동차 정지거리에서만 선형회귀가 더 정확했다.";
+const KB=[
+  {id:"cars",title:"자동차 정지거리",keys:["정지거리","자동차","속도","브레이크","cars","진 이유","졌","이긴"],
+   text:"자동차 정지거리(50대, 속도로 정지거리를 예측): 시험 데이터 10대에서 선형회귀 오차 11.26 ft, 신경망 오차 13.44 ft로 신경망이 19% 더 틀렸다. 학습 데이터 40대에서는 신경망 14.97 ft, 선형회귀 15.90 ft로 신경망이 더 잘 맞았다. 학습한 점에만 맞춰진 과적합 사례다. 같은 14 mph에서도 정지거리가 26~80 ft로 흩어져 있어서 곡선을 써도 줄일 오차가 없었다."},
+  {id:"pressure",title:"수은 증기압",keys:["증기압","수은","온도","압력","pressure"],
+   text:"수은 증기압(19개, 온도로 증기압을 예측): 증기압은 0℃에서 0.0002 mmHg, 360℃에서 806 mmHg로 약 400만 배 커진다. 선형회귀 오차 142.7 mmHg, 신경망 오차 4.371 mmHg로 97% 줄었다. 점이 19개뿐이라 시험 데이터를 따로 두지 않았고, 학습한 데이터에서 잰 오차다."},
+  {id:"uspop",title:"미국 인구",keys:["인구","미국","연도","uspop"],
+   text:"미국 인구(19개, 연도로 인구를 예측): 선형회귀 오차 17.14백만 명, 신경망 오차 3.245백만 명으로 81% 줄었다. 1790~1820년과 1950~1970년에는 실제 인구가 직선보다 많고 그 사이는 적어서, 직선이 틀리는 방향이 일정했다. 그래서 곡선으로 메울 수 있었다."},
+  {id:"puromycin",title:"효소 반응속도",keys:["효소","반응속도","기질","농도","포화","puromycin"],
+   text:"효소 반응속도(12개, 기질 농도로 반응속도를 예측): 선형회귀 오차 28.21, 신경망 오차 8.515로 70% 줄었다. 농도가 0.56 ppm을 넘으면 반응속도가 거의 오르지 않는 포화 곡선이다. 점이 12개뿐이라 은닉 뉴런을 3개로 줄였다."},
+  {id:"loblolly",title:"테다소나무 성장",keys:["소나무","나무","테다","성장","높이","나이","loblolly"],
+   text:"테다소나무 성장(84그루, 나무 나이로 높이를 예측): 시험 데이터 17그루에서 선형회귀 오차 3.719 ft, 신경망 오차 2.012 ft로 46% 줄었다. 은닉 뉴런을 1개만 써도 2.064 ft로 선형회귀보다 나았다."},
+  {id:"mpg",title:"차량 연비",keys:["연비","공차중량","중량","마력","배기량","입력 수","mpg"],
+   text:"차량 연비(392대, 공차중량·마력·배기량으로 연비를 예측): 시험 데이터 78대에서 선형회귀 오차 3.689 mpg, 신경망 오차 3.121 mpg로 15% 줄었다. 입력을 공차중량 하나만 쓰면 6%, 6개를 모두 쓰면 22% 줄었다. 입력이 많을수록 신경망 쪽이 유리했다."},
+  {id:"overfit",title:"과적합과 데이터 나누기",keys:["과적합","외우","시험 데이터","학습 데이터","나누","분할","일반화","뉴런 수","overfit"],
+   text:"과적합은 학습한 데이터에는 잘 맞지만 처음 보는 데이터에서는 틀리는 현상이다. 이를 확인하려고 점이 30개 이상인 데이터는 80%로 학습하고 20%로 시험했다. 자동차 정지거리가 과적합 사례다. 학습 데이터에서는 신경망이 이겼지만 시험 데이터에서는 졌다. 은닉 뉴런을 1개부터 8개까지 바꿔도 정지거리는 항상 선형회귀보다 못했다."},
+  {id:"method",title:"계산 방법",keys:["rmse","오차","계산","방법","표준화","학습률","경사하강","시그모이드","조정","r²","r2","은닉","뉴런"],
+   text:"계산 방법: 신경망은 입력층, 은닉층 1개(시그모이드), 출력층으로 되어 있다. 은닉 뉴런은 4개(효소 반응속도만 3개), 경사하강법 3,000번, 학습률 0.3이다. 입력과 출력은 평균 0, 표준편차 1로 표준화했다. 오차 RMSE는 실제값과 예측값의 차이를 제곱해 평균을 내고 제곱근을 씌운 값이다. 조정 R²는 1 − (1 − R²)(n − 1)/(n − p)로, n은 점 개수, p는 정해야 할 값의 개수다."},
+  {id:"regression",title:"회귀분석 페이지",keys:["회귀","직선","최소제곱","다항식","지수","거듭제곱","로지스틱","로그","기울기","절편"],
+   text:"회귀분석 페이지: 선형 모드는 직선 y = ax + b를 최소제곱법과 경사하강법으로 각각 구한다. 자동차 정지거리에서는 a = 3.9324, b = −17.579가 나왔다. 비선형 모드는 다항식, 지수, 거듭제곱, 로그, 포화, 로지스틱, 인공신경망을 맞추고 조정 R²로 비교한다. 자동차 정지거리에서는 거듭제곱 모형의 조정 R²가 0.6584로 가장 높았다."},
+  {id:"llm",title:"이 대화 페이지",keys:["너는","넌 ","누구","llm","qwen","모델","토큰","webllm","webgpu","브라우저","소개","어떻게 답"],
+   text:"이 대화 페이지: 오픈소스 언어 모델 Qwen3.5(알리바바, Apache 2.0)를 WebLLM으로 브라우저 안에서 돌린다. 서버 없이 이 컴퓨터의 그래픽 카드(WebGPU)로 계산한다. 언어 모델은 다음에 올 토큰의 확률을 계산해 하나씩 이어 붙여 문장을 만든다."}
+];
+function pick(q){const s=String(q).toLowerCase();
+  return KB.map(k=>({k,n:k.keys.reduce((a,w)=>a+(s.includes(w.toLowerCase())?1:0),0)})).filter(x=>x.n>0).sort((a,b)=>b.n-a.n).slice(0,3).map(x=>x.k);}
+function systemPrompt(chunks,useKb){
+  if(!useKb)return "너는 친절한 도우미다. 한국어로 짧고 분명하게 답한다. 모르는 것은 모른다고 말한다.";
+  return "너는 이 웹사이트의 안내 도우미다. 한국어로 짧고 분명하게 답한다. 아래 [자료]에 있는 내용과 숫자는 그대로 쓰고, 자료에 없는 숫자는 지어내지 않는다. 자료로 답할 수 없으면 모른다고 말한다.\n\n[자료]\n"+[KB_BASE].concat(chunks.map(c=>c.text)).join("\n");}
+
+/* ── 상태와 화면 도구 ── */
+const $=id=>document.getElementById(id);
+const RM=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const S={gpu:false,f16:true,sel:"0.8B",lib:null,engine:null,id:null,loading:false,busy:false,history:[]};
+const esc=t=>String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const fmt=t=>esc(t).replace(/\*\*([^*\n]+)\*\*/g,"<b>$1</b>").replace(/`([^`\n]+)`/g,"<code>$1</code>");
+/* 모델이 내보내는 생각 과정(<think>…</think>)은 화면에서 뺀다 */
+function clean(raw){let t=String(raw).replace(/<think>[\s\S]*?<\/think>/g,"");const i=t.indexOf("<think>");
+  if(i>=0)return {text:t.slice(0,i).trim(),thinking:true};return {text:t.replace(/^\s+/,""),thinking:false};}
+const modelId=key=>`Qwen3.5-${key}-${S.f16?"q4f16_1":"q4f32_1"}-MLC`;
+function setStat(html,raw){$("pstat").innerHTML=html||"";$("praw").textContent=raw||"";}
+function setBar(p,done){$("pfill").style.width=Math.max(0,Math.min(1,p))*100+"%";$("pbar").classList.toggle("done",!!done);}
+
+/* ── 장치 확인 ── */
+async function checkDevice(){const el=$("dev");
+  const bad=m=>{S.gpu=false;el.className="dev bad";el.textContent=m;$("load").disabled=true;};
+  if(!("gpu" in navigator))return bad("이 브라우저는 WebGPU를 지원하지 않아 모델을 돌릴 수 없습니다. 최신 Chrome이나 Edge로 열어 주세요.");
+  try{const ad=await navigator.gpu.requestAdapter({powerPreference:"high-performance"});
+    if(!ad)return bad("그래픽 장치를 찾지 못했습니다. 브라우저 설정에서 하드웨어 가속이 켜져 있는지 확인해 주세요.");
+    S.f16=ad.features.has("shader-f16");const info=ad.info||{},name=[info.vendor,info.architecture].filter(Boolean).join(" ");
+    S.gpu=true;el.className="dev";el.textContent=`WebGPU를 쓸 수 있습니다${name?` (그래픽 장치: ${name})`:""}.`+(S.f16?"":" 이 장치는 16비트 연산을 지원하지 않아 조금 더 큰 모델 파일을 씁니다.");
+    $("load").disabled=false;
+  }catch(e){bad("그래픽 장치를 확인하다가 문제가 생겼습니다. 최신 Chrome이나 Edge로 다시 열어 주세요.");}}
+
+/* ── 모델 고르기와 불러오기 ── */
+function drawModels(){$("mopts").innerHTML=MODELS.map(m=>`<label class="mopt"><input type="radio" name="m" value="${m.key}" ${m.key===S.sel?"checked":""}><span class="nm">Qwen3.5 ${m.key}<small>${m.tag}, 지능 지수 ${m.iq}</small></span><span class="mem">그래픽 메모리 ${m.mem}</span></label>`).join("");
+  $("mopts").querySelectorAll("input").forEach(r=>r.addEventListener("change",()=>{S.sel=r.value;if(S.id&&S.id!==modelId(S.sel))$("load").textContent="이 모델로 바꾸기";else if(S.id)$("load").textContent="불러옴";}));}
+function onProgress(p){const pr=typeof p.progress==="number"?p.progress:0,t=String(p.text||"");setBar(pr);
+  const stage=/fetch/i.test(t)?"모델 파일을 내려받는 중":/cache/i.test(t)?"저장해 둔 모델을 불러오는 중":/shader|gpu/i.test(t)?"그래픽 카드에 올리는 중":/finish/i.test(t)?"거의 끝났습니다":"준비하는 중";
+  setStat(`<b>${stage}</b> ${Math.round(pr*100)}%`,t);}
+function explain(e){const m=String(e&&e.message||e||"");
+  if(/dynamically imported module|importing a module|Failed to resolve module/i.test(m))return "실행 도구(WebLLM)를 받지 못했습니다. 인터넷 연결을 확인하고 다시 눌러 주세요.";
+  if(/NO_MODEL/.test(m))return "고른 모델을 실행 도구의 목록에서 찾지 못했습니다. 다른 크기를 골라 주세요.";
+  if(/shader-f16/i.test(m))return "이 그래픽 장치는 16비트 연산을 지원하지 않습니다. 다시 누르면 다른 형식의 파일로 시도합니다.";
+  if(/out of memory|OOM|allocation|device.*lost|lost.*device|memory/i.test(m))return "그래픽 메모리가 모자랍니다. 더 작은 모델을 골라 주세요.";
+  if(/Failed to fetch|NetworkError|network|fetch|CSP|Content Security Policy|Cache/i.test(m))return "모델 파일을 내려받지 못했습니다. 인터넷 연결을 확인해 주세요. 이 페이지를 다른 화면 안에 끼워서 열었다면 내려받기가 막혀 있을 수 있으니, 사이트 주소로 직접 열어 주세요.";
+  if(/WebGPU|adapter|GPU/i.test(m))return "그래픽 장치를 쓸 수 없습니다. 최신 Chrome이나 Edge에서 하드웨어 가속을 켜고 다시 열어 주세요.";
+  return "모델을 불러오지 못했습니다.";}
+async function loadModel(){if(S.loading||S.busy||!S.gpu)return;const id=modelId(S.sel);if(S.engine&&S.id===id)return;
+  S.loading=true;$("load").disabled=true;$("load").textContent="불러오는 중";setBar(0);setStat("<b>실행 도구를 불러오는 중</b>");lockChat(true);
+  try{
+    if(!S.lib)S.lib=await import(CDN);
+    const lib=S.lib,list=lib.prebuiltAppConfig.model_list;
+    if(!list.some(m=>m.model_id===id))throw new Error("NO_MODEL");
+    const patch=m=>{if(!/^Qwen3\.5-/.test(m.model_id))return m;const ov=m.overrides||{},cc=ov.conv_config||{};
+      return cc.stop_token_ids?m:{...m,overrides:{...ov,conv_config:{...cc,stop_token_ids:STOP_IDS}}};};
+    const appConfig={...lib.prebuiltAppConfig,model_list:list.map(patch)};
+    if(S.engine){try{await S.engine.unload();}catch(_){ }S.engine=null;S.id=null;}
+    S.engine=await lib.CreateMLCEngine(id,{appConfig,initProgressCallback:onProgress});
+    S.id=id;S.history=[];setBar(1,true);setStat(`<b>준비됐습니다.</b> Qwen3.5 ${S.sel}`);
+    $("s-model").textContent=`Qwen3.5 ${S.sel}`;$("load").textContent="불러옴";$("unload").hidden=false;
+    $("empty")&&($("empty").innerHTML="<b>무엇이든 물어보세요</b>아래 질문을 눌러 시작해도 됩니다. 사이트 결과를 물으면 관련 자료를 함께 넣어 답합니다.");
+    lockChat(false);$("q").focus();
+  }catch(e){console.error(e);if(/shader-f16/i.test(String(e&&e.message)))S.f16=false;
+    setBar(0);setStat(`<b>${esc(explain(e))}</b>`,String(e&&e.message||e).slice(0,220));$("load").textContent="다시 시도";lockChat(!S.engine);
+  }finally{S.loading=false;$("load").disabled=!S.gpu;}}
+async function unloadModel(){if(S.busy||S.loading||!S.engine)return;try{await S.engine.unload();}catch(_){ }
+  S.engine=null;S.id=null;S.history=[];$("unload").hidden=true;$("load").textContent="모델 불러오기";$("s-model").textContent="불러오지 않음";setBar(0);setStat("모델을 내렸습니다. 내려받은 파일은 브라우저에 남아 있어 다시 불러올 때는 빠릅니다.");lockChat(true);}
+function lockChat(lock){const on=!lock&&!!S.engine;$("q").disabled=!on;$("send").disabled=!on;$("reset").disabled=!on;
+  $("q").placeholder=on?"질문을 적고 Enter를 누르세요 (줄바꿈은 Shift+Enter)":"모델을 불러오면 질문할 수 있습니다";
+  document.querySelectorAll("#chips button").forEach(b=>b.disabled=!on);}
+
+/* ── 대화 ── */
+function addMsg(role,html){const e=$("empty");if(e)e.remove();const w=document.createElement("div");w.className="msg "+role;
+  const b=document.createElement("div");b.className="bub";b.innerHTML=html;w.appendChild(b);$("msgs").appendChild(w);$("msgs").scrollTop=$("msgs").scrollHeight;return {w,b};}
+function buildMessages(q,chunks,useKb,withHistory){return [{role:"system",content:systemPrompt(chunks,useKb)}].concat(withHistory?S.history.slice(-4):[],[{role:"user",content:q}]);}
+async function ask(q){q=String(q||"").trim();if(!q||S.busy||!S.engine)return;
+  S.busy=true;$("q").value="";grow();$("send").hidden=true;$("stop").hidden=false;$("q").disabled=true;$("reset").disabled=true;
+  document.querySelectorAll("#chips button").forEach(b=>b.disabled=true);
+  addMsg("user",esc(q));const useKb=$("useKb").checked,chunks=useKb?pick(q):[],{w,b}=addMsg("ai",'<span class="think">생각하는 중</span><span class="cursor"></span>');
+  let raw="",usage=null,pieces=0,t0=performance.now(),failed=null,stopped=false;S.onStop=()=>{stopped=true;};
+  const run=async withHistory=>{raw="";pieces=0;t0=performance.now();
+    const stream=await S.engine.chat.completions.create({messages:buildMessages(q,chunks,useKb,withHistory),stream:true,stream_options:{include_usage:true},temperature:0.7,top_p:0.8,max_tokens:512,extra_body:{enable_thinking:false}});
+    for await(const ch of stream){const d=ch.choices&&ch.choices[0]&&ch.choices[0].delta&&ch.choices[0].delta.content;if(d){raw+=d;pieces++;const c=clean(raw);
+        b.innerHTML=(c.text?fmt(c.text):(c.thinking?'<span class="think">생각하는 중</span>':""))+'<span class="cursor"></span>';$("msgs").scrollTop=$("msgs").scrollHeight;}
+      if(ch.usage)usage=ch.usage;}};
+  try{try{await run(true);}catch(e){if(/context|window|exceed|too long/i.test(String(e&&e.message))&&S.history.length){S.history=[];await run(false);}else throw e;}}
+  catch(e){failed=e;console.error(e);}
+  const c=clean(raw),secs=(performance.now()-t0)/1000;
+  if(failed&&!c.text){b.className="bub err";b.textContent=/memory|lost|OOM/i.test(String(failed.message))?"그래픽 메모리가 모자라 답을 만들지 못했습니다. 더 작은 모델로 바꿔 주세요.":"답을 만들다가 문제가 생겼습니다. 다시 물어봐 주세요.";}
+  else if(!c.text){b.className="bub err";b.textContent=stopped?"답이 나오기 전에 멈췄습니다.":c.thinking?"모델이 생각만 하다가 답을 내지 못했습니다. 다시 물어봐 주세요.":"답이 비어 있습니다. 다시 물어봐 주세요.";}
+  else{const text=c.text;b.innerHTML=fmt(text)+(stopped?' <span class="think">(여기서 멈춤)</span>':"");
+    S.history.push({role:"user",content:q},{role:"assistant",content:text});
+    const m=document.createElement("div");m.className="meta";
+    m.innerHTML=(useKb?`<span>넣어 준 자료</span>`+[{title:"사이트 요약"}].concat(chunks).map(k=>`<span class="tag">${esc(k.title)}</span>`).join(""):`<span>자료 없이 답함</span>`);w.appendChild(m);
+    const ex=usage&&usage.extra||{},sp=ex.decode_tokens_per_s;
+    $("s-speed").textContent=sp?`초당 ${sp.toFixed(1)}토큰`:(secs>0?`초당 약 ${(pieces/secs).toFixed(1)}조각`:"—");
+    $("s-tok").textContent=usage&&usage.completion_tokens?`${usage.completion_tokens}토큰`:`${pieces}조각`;
+    $("s-in").textContent=usage&&usage.prompt_tokens?`${usage.prompt_tokens}토큰`:"—";}
+  S.busy=false;$("send").hidden=false;$("stop").hidden=true;lockChat(false);$("msgs").scrollTop=$("msgs").scrollHeight;$("q").focus();}
+function grow(){const t=$("q");t.style.height="auto";t.style.height=Math.min(140,t.scrollHeight)+"px";}
+function resetChat(){if(S.busy)return;S.history=[];try{S.engine&&S.engine.resetChat&&S.engine.resetChat();}catch(_){ }
+  $("msgs").innerHTML='<div class="empty" id="empty"><b>대화를 지웠습니다</b>새로 물어보세요.</div>';["s-speed","s-tok","s-in"].forEach(i=>$(i).textContent="—");}
+
+/* ── 설명 그림 ── */
+function drawHow(){const v=n=>`var(--${n})`,ink=v("ink"),soft=v("soft"),pos=v("pos"),fit=v("fit");
+  const box=g=>`<svg viewBox="0 0 520 132" role="img" xmlns="http://www.w3.org/2000/svg"><rect x=".5" y=".5" width="519" height="131" rx="6" fill="${v("paper")}" stroke="${v("fine")}"/>${g}</svg>`;
+  const T=(x,y,t,o="")=>`<text x="${x}" y="${y}" font-size="13" ${/fill=/.test(o)?"":`fill="${soft}"`} ${o}>${esc(t)}</text>`;
+  const pill=(x,y,w,t,fill,col)=>`<rect x="${x}" y="${y}" width="${w}" height="32" rx="6" fill="${fill}" stroke="${ink}" stroke-opacity=".25"/><text x="${x+w/2}" y="${y+21}" text-anchor="middle" font-size="14" fill="${col||ink}">${esc(t)}</text>`;
+  const arrow=(x1,y1,x2,y2)=>`<path d="M${x1} ${y1}L${x2} ${y2}" stroke="${soft}" stroke-width="1.5" marker-end="url(#ah)"/>`;
+  const defs=`<defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="${soft}"/></marker></defs>`;
+  const I={
+   tok(){const ws=[["신경망",62],["은",34],["언제",48],["직선",48],["을",34],["이길",48],["까",34]];let x=22,g="";
+     ws.forEach(([t,w],i)=>{g+=pill(x,42,w,t,"#fff")+`<text x="${x+w/2}" y="94" text-anchor="middle" font-size="12" fill="${pos}" class="num">${i+1}번</text>`;x+=w+8;});
+     return box(g+T(22,26,"문장을 조각으로 자르고 번호를 붙인다")+T(22,120,"예시다. 실제로 자르는 위치는 모델마다 다르다.",'font-size="11.5"'));},
+   prob(){const c=[["이길까",0.62],["넘을까",0.21],["따라갈까",0.09],["그 밖의 후보",0.08]];let g="";
+     c.forEach(([t,p],i)=>{const y=30+i*20;g+=T(150,y+12,t,'text-anchor="end" fill="'+ink+'"')+`<rect x="160" y="${y}" width="${(p*300).toFixed(0)}" height="15" rx="3" fill="${i===0?fit:pos}" opacity="${i===0?1:.55}"/>`+T(166+p*300,y+12,Math.round(p*100)+"%",'class="num"');});
+     return box(g+T(22,20,"\"신경망은 언제 직선을\" 다음에 올 토큰")+T(22,124,"예시 숫자다. 실제 확률은 모델이 계산한다.",'font-size="11.5"'));},
+   loop(){return box(defs+pill(24,50,150,"지금까지의 문장","#fff")+arrow(178,66,212,66)+pill(216,50,90,"모델",ink,"#fff")+arrow(310,66,344,66)+pill(348,50,148,"다음 토큰 하나",fit,"#fff")+
+     `<path d="M422 86 C422 118 100 118 100 88" fill="none" stroke="${soft}" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#ah)"/>`+T(260,126,"문장 끝에 붙이고 다시",'text-anchor="middle" font-size="12"')+T(24,30,"답이 끝날 때까지 되풀이한다"));},
+   kb(){return box(defs+pill(24,26,120,"질문","#fff")+pill(24,76,120,"고른 자료",v("wash"),pos)+arrow(148,42,206,60)+arrow(148,92,206,74)+pill(210,50,90,"모델",ink,"#fff")+arrow(304,66,346,66)+pill(350,50,146,"자료에 근거한 답","#fff")+T(350,108,"자료에 없는 숫자는",'font-size="12"')+T(350,124,"지어내지 말라고 시킨다",'font-size="12"'));}
+  };
+  document.querySelectorAll(".ill").forEach(el=>{const f=I[el.dataset.ill];if(f)el.innerHTML=f();});}
+
+/* ── 처음 그리기 ── */
+drawModels();drawHow();
+$("chips").innerHTML=CHIPS.map(c=>`<button type="button" disabled>${esc(c)}</button>`).join("");
+document.querySelectorAll("#chips button").forEach(b=>b.addEventListener("click",()=>ask(b.textContent)));
+$("load").addEventListener("click",loadModel);$("unload").addEventListener("click",unloadModel);
+$("send").addEventListener("click",()=>ask($("q").value));$("reset").addEventListener("click",resetChat);
+$("stop").addEventListener("click",()=>{if(S.onStop)S.onStop();try{S.engine&&S.engine.interruptGenerate();}catch(_){ }});
+$("q").addEventListener("input",grow);
+$("q").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing&&e.keyCode!==229){e.preventDefault();ask($("q").value);}});
+if(RM||!("IntersectionObserver" in window))document.querySelectorAll(".rv").forEach(e=>e.classList.add("in"));
+else{const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target);}}),{rootMargin:"0px 0px -6% 0px"});document.querySelectorAll(".rv").forEach(e=>io.observe(e));}
+checkDevice();
+window.__chat={S,pick,buildMessages,clean,modelId,systemPrompt};
+</script>
+</body>
+</html>

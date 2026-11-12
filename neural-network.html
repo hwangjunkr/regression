@@ -30,6 +30,7 @@ a{color:inherit}
 /* 위쪽 막대: 항상 진한 바탕 */
 .bar{position:sticky;top:0;z-index:30;background:var(--deep);color:var(--dink);border-bottom:1px solid var(--dline)}
 .barin{max-width:var(--wrap);margin:0 auto;padding:0 32px;height:62px;display:flex;align-items:center;gap:28px}
+.barin .tolink+.tolink{margin-left:-16px}
 .brand{display:flex;align-items:center;gap:10px;font-weight:600;white-space:nowrap;color:var(--dink);text-decoration:none}
 .brand svg{width:26px;height:26px}
 .tabs{position:relative;display:flex;gap:4px;margin-left:auto}
@@ -179,6 +180,7 @@ footer a{color:var(--dink)}
    <i class="ind" id="ind" aria-hidden="true"></i>
   </nav>
   <a class="tolink" href="https://hwangjunkr.github.io/regression/">회귀분석 보기</a>
+  <a class="tolink" href="https://hwangjunkr.github.io/regression/chat.html">AI 대화</a>
  </div>
 </header>
 <main>
@@ -273,7 +275,7 @@ footer a{color:var(--dink)}
 </main>
 <footer>
  <div class="wrap fgrid">
-  <div><p><b>인공신경망</b></p><p><a href="https://hwangjunkr.github.io/regression/">회귀분석 보기</a></p></div>
+  <div><p><b>인공신경망</b></p><p><a href="https://hwangjunkr.github.io/regression/">회귀분석 보기</a><br><a href="https://hwangjunkr.github.io/regression/chat.html">AI 대화</a></p></div>
   <div><p><b>데이터 출처</b></p><p id="srcs"></p></div>
  </div>
 </footer>
